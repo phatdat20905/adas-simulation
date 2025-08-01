@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+import apiRoutes from './routes/index.js';
 import connectDB from './config/db.js';
 
 // Load environment variables
@@ -8,10 +11,15 @@ dotenv.config();
 
 // Initialize Express
 const app = express();
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(__dirname + '/Uploads'));
+
+// Routes
+app.use('/api', apiRoutes);
 
 // Connect to MongoDB
 connectDB();
