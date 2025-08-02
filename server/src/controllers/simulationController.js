@@ -22,7 +22,12 @@ const simulateADAS = async (req, res) => {
     }
 
     // Call Python microservice
-    const results = await processADAS(join(__dirname, '../../', simulation.filepath));
+    const results = await processADAS(
+      join(__dirname, '../../', simulation.filepath),
+      simulation.vehicleId.toString(),
+      simulationId,
+      simulation.userId.toString()
+    );
 
     // Update simulation
     simulation.result = results.summary || {};
@@ -33,33 +38,31 @@ const simulateADAS = async (req, res) => {
     // Save sensor data
     if (results.sensorData && results.sensorData.length) {
       const sensorDataDocs = results.sensorData.map((data) => ({
-        ...data,
-        simulationId,
-        vehicleId: simulation.vehicleId,
-        userId: simulation.userId,
+        vehicleId: data.vehicleId,
+        simulationId: data.simulationId,
+        userId: data.userId,
+        timestamp: new Date(data.timestamp),
+        speed: data.speed,
+        distance_to_object: data.distance_to_object,
+        lane_status: data.lane_status,
+        obstacle_detected: data.obstacle_detected,
+        camera_frame_url: data.camera_frame_url,
+        alertLevel: data.alertLevel,
       }));
       await SensorData.insertMany(sensorDataDocs);
+    }
 
-      // Create alerts for high/low alertLevel
-      const alerts = results.sensorData
-        .filter((data) => data.alertLevel && data.alertLevel !== 'none')
-        .map((data) => ({
-          type: data.alertLevel === 'high' ? 'collision' : 'obstacle',
-          description: `Alert at ${data.timestamp}: ${data.lane_status}, distance ${data.distance_to_object || 'N/A'}m`,
-          severity: data.alertLevel,
+    // Save alerts
+    if (results.alerts && results.alerts.length) {
+      const savedAlerts = await Alert.insertMany(results.alerts);
+      // Update sensorDataId in alerts
+      for (let i = 0; i < savedAlerts.length && i < results.sensorData.length; i++) {
+        const sensorData = await SensorData.findOne({
           simulationId,
-          sensorDataId: null, // Will be updated after SensorData is saved
-          vehicleId: simulation.vehicleId,
-          userId: simulation.userId,
-        }));
-      if (alerts.length) {
-        const savedAlerts = await Alert.insertMany(alerts);
-        // Update sensorDataId in alerts
-        for (let i = 0; i < savedAlerts.length; i++) {
-          await SensorData.findOneAndUpdate(
-            { simulationId, timestamp: results.sensorData[i].timestamp },
-            { $set: { alertLevel: savedAlerts[i].severity } }
-          );
+          timestamp: new Date(results.sensorData[i].timestamp),
+        });
+        if (sensorData) {
+          await Alert.findByIdAndUpdate(savedAlerts[i]._id, { sensorDataId: sensorData._id });
         }
       }
     }
