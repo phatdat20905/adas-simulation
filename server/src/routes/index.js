@@ -1,10 +1,10 @@
 import express from 'express';
-import userRoutes from './user.js';
-import vehicleRoutes from './vehicle.js';
-import uploadRoutes from './upload.js';
-import simulationRoutes from './simulation.js';
-import alertRoutes from './alert.js';
-import sensorDataRoutes from './sensorData.js'
+import userRoutes from './userRoute.js';
+import vehicleRoutes from './vehicleRoute.js';
+import uploadRoutes from './uploadRoute.js';
+import simulationRoutes from './simulationRoute.js';
+import alertRoutes from './alertRoute.js';
+import sensorDataRoutes from './sensorDataRoute.js'
 
 const router = express.Router();
 

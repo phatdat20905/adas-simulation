@@ -49,4 +49,13 @@ const deleteVehicle = async (vehicleId, userId) => {
   return { message: 'Vehicle deactivated' };
 };
 
-export { createVehicle, getVehicles, updateVehicle, deleteVehicle };
+const getVehicleById = async (vehicleId, userId) => {
+  const query = req.user.role === 'admin' ? { _id: vehicleId } : { _id: vehicleId, owner: userId };
+  const vehicle = await Vehicle.findOne(query).lean();
+  if (!vehicle) {
+    throw new Error('Vehicle not found or unauthorized');
+  }
+  return vehicle;
+};
+
+export { createVehicle, getVehicles, getVehicleById, updateVehicle, deleteVehicle };

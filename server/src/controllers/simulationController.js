@@ -1,24 +1,81 @@
+import * as simulationService from '../services/simulationService.js';
+import { processADAS } from '../services/adasService.js';
+import { emitAlert } from '../socket.js';
 import Simulation from '../models/Simulation.js';
 import Alert from '../models/Alert.js';
 import SensorData from '../models/SensorData.js';
-import { processADAS } from '../services/adasService.js';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+const createSimulation = async (req, res) => {
+  try {
+    const { filename, filepath, fileType, vehicleId } = req.body;
+    if (!filename || !filepath || !fileType || !vehicleId) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+    const simulation = await simulationService.createSimulation({ ...req.body, userId: req.user.id });
+    res.status(201).json({ success: true, data: simulation });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const getSimulations = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const simulations = await simulationService.getSimulations(req.user.id, page, limit);
+    res.status(200).json({ success: true, data: simulations });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getSimulationById = async (req, res) => {
+  try {
+    const simulation = await simulationService.getSimulationById(req.params.id, req.user.id);
+    res.status(200).json({ success: true, data: simulation });
+  } catch (error) {
+    res.status(404).json({ success: false, message: error.message });
+  }
+};
+
+const updateSimulation = async (req, res) => {
+  try {
+    const { filename, filepath, fileType, status, result } = req.body;
+    if (!filename && !filepath && !fileType && !status && !result) {
+      return res.status(400).json({ success: false, message: 'At least one field is required' });
+    }
+    const simulation = await simulationService.updateSimulation(req.params.id, req.user.id, req.body);
+    res.status(200).json({ success: true, data: simulation });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const deleteSimulation = async (req, res) => {
+  try {
+    const result = await simulationService.deleteSimulation(req.params.id, req.user.id);
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
 const simulateADAS = async (req, res) => {
   const { simulationId } = req.body;
 
   if (!simulationId) {
-    return res.status(400).json({ error: 'Simulation ID is required' });
+    return res.status(400).json({ success: false, message: 'Simulation ID is required' });
   }
 
   try {
     const simulation = await Simulation.findById(simulationId);
     if (!simulation || (req.user.role !== 'admin' && simulation.userId.toString() !== req.user.id)) {
-      return res.status(404).json({ error: 'Simulation not found or unauthorized' });
+      return res.status(404).json({ success: false, message: 'Simulation not found or unauthorized' });
     }
 
     // Call Python microservice
@@ -30,7 +87,13 @@ const simulateADAS = async (req, res) => {
     );
 
     // Update simulation
-    simulation.result = results.summary || {};
+    simulation.result = results.summary || {
+      totalAlerts: 0,
+      collisionCount: 0,
+      laneDepartureCount: 0,
+      obstacleCount: 0,
+      trafficSignCount: 0,
+    };
     simulation.status = results.status || 'completed';
     simulation.sensorDataCount = results.sensorData?.length || 0;
     await simulation.save();
@@ -47,16 +110,29 @@ const simulateADAS = async (req, res) => {
         lane_status: data.lane_status,
         obstacle_detected: data.obstacle_detected,
         camera_frame_url: data.camera_frame_url,
-        alertLevel: data.alertLevel,
       }));
       await SensorData.insertMany(sensorDataDocs);
     }
 
-    // Save alerts
+    // Save alerts and emit via Socket.io
     if (results.alerts && results.alerts.length) {
-      const savedAlerts = await Alert.insertMany(results.alerts);
+      const savedAlerts = await Alert.insertMany(
+        results.alerts.map((alert) => ({
+          ...alert,
+          userId: simulation.userId,
+          vehicleId: simulation.vehicleId,
+          simulationId,
+        }))
+      );
+
+      // Emit alerts via Socket.io
+      const { io } = require('../../index.js');
+      savedAlerts.forEach((alert) => {
+        emitAlert(io, simulation.userId.toString(), alert);
+      });
+
       // Update sensorDataId in alerts
-      for (let i = 0; i < savedAlerts.length && i < results.sensorData.length; i++) {
+      for (let i = 0; i < savedAlerts.length && i < results.sensorData?.length; i++) {
         const sensorData = await SensorData.findOne({
           simulationId,
           timestamp: new Date(results.sensorData[i].timestamp),
@@ -68,24 +144,15 @@ const simulateADAS = async (req, res) => {
     }
 
     res.status(200).json({
+      success: true,
       message: 'Simulation completed',
-      simulation,
+      data: simulation,
     });
   } catch (error) {
     simulation.status = 'failed';
     await simulation.save();
-    res.status(500).json({ error: `Simulation failed: ${error.message}` });
+    res.status(500).json({ success: false, message: `Simulation failed: ${error.message}` });
   }
 };
 
-const getSimulations = async (req, res) => {
-  try {
-    const query = req.user.role === 'admin' ? {} : { userId: req.user.id };
-    const simulations = await Simulation.find(query).sort({ createdAt: -1 }).lean();
-    res.status(200).json(simulations);
-  } catch (error) {
-    res.status(500).json({ error: `Failed to fetch simulations: ${error.message}` });
-  }
-};
-
-export { simulateADAS, getSimulations };
+export { createSimulation, getSimulations, getSimulationById, updateSimulation, deleteSimulation, simulateADAS };

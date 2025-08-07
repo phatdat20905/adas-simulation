@@ -2,7 +2,7 @@ import multer from 'multer';
 import { extname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import Simulation from '../models/Simulation.js';
+import * as uploadService from '../services/uploadService.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -25,7 +25,7 @@ const upload = multer({
     if (extnameValid && mimetypeValid) {
       return cb(null, true);
     } else {
-      cb('Error: Images (jpeg, jpg, png) or videos (mp4) only!');
+      cb(new Error('Images (jpeg, jpg, png) or videos (mp4) only!'));
     }
   },
 }).single('file');
@@ -33,29 +33,24 @@ const upload = multer({
 const uploadFile = async (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
-      return res.status(400).json({ error: err.message });
+      return res.status(400).json({ success: false, message: err.message });
     }
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+    if (!req.body.vehicleId) {
+      return res.status(400).json({ success: false, message: 'Vehicle ID is required' });
     }
 
     try {
-      const simulation = new Simulation({
-        filename: req.file.filename,
-        filepath: `/Uploads/${req.file.filename}`,
-        fileType: req.file.mimetype.startsWith('video') ? 'video' : 'image',
-        vehicleId: req.body.vehicleId,
-        userId: req.user.id,
-        status: 'pending',
-      });
-
-      await simulation.save();
-      res.status(200).json({
-        message: 'File uploaded successfully',
-        simulation,
+      const simulation = await uploadService.uploadFile({ file: req.file, vehicleId: req.body.vehicleId, userId: req.user.id });
+      res.status(201).json({
+        success: true,
+        message: 'File uploaded and simulation created',
+        data: simulation,
       });
     } catch (error) {
-      res.status(500).json({ error: `Failed to save simulation: ${error.message}` });
+      res.status(400).json({ success: false, message: `Failed to save simulation: ${error.message}` });
     }
   });
 };
