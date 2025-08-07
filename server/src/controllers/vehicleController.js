@@ -1,45 +1,49 @@
-import Vehicle from '../models/Vehicle.js';
+import { createVehicle, getVehicles, updateVehicle, deleteVehicle } from '../services/vehicleService.js';
 
 const createVehicle = async (req, res) => {
   try {
-    const { licensePlate, brand, model, year } = req.body;
-    const vehicle = new Vehicle({
-      licensePlate,
-      brand,
-      model,
-      year,
-      owner: req.user.id,
-    });
-
-    await vehicle.save();
-    res.status(201).json(vehicle);
+    const { licensePlate, brand, model, color, engineType, engineCapacity } = req.body;
+    if (!licensePlate || !brand || !model || !color) {
+      return res.status(400).json({ success: false, message: 'Missing required fields' });
+    }
+    const vehicle = await createVehicle({ ...req.body, owner: req.user.id });
+    res.status(201).json({ success: true, data: vehicle });
   } catch (error) {
-    res.status(400).json({ error: `Failed to create vehicle: ${error.message}` });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
 const getVehicles = async (req, res) => {
   try {
-    const query = req.user.role === 'admin' ? {} : { owner: req.user.id };
-    const vehicles = await Vehicle.find(query).lean();
-    res.status(200).json(vehicles);
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const vehicles = await getVehicles(req.user.id, page, limit);
+    res.status(200).json({ success: true, data: vehicles });
   } catch (error) {
-    res.status(500).json({ error: `Failed to fetch vehicles: ${error.message}` });
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const updateVehicle = async (req, res) => {
+  try {
+    const { licensePlate, brand, model, color, engineType, engineCapacity } = req.body;
+    if (!licensePlate && !brand && !model && !color && !engineType && !engineCapacity) {
+      return res.status(400).json({ success: false, message: 'At least one field is required' });
+    }
+    const vehicle = await updateVehicle(req.params.id, req.user.id, req.body);
+    res.status(200).json({ success: true, data: vehicle });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
 const deleteVehicle = async (req, res) => {
   try {
-    const { id } = req.params;
-    const query = req.user.role === 'admin' ? { _id: id } : { _id: id, owner: req.user.id };
-    const vehicle = await Vehicle.findOneAndDelete(query);
-    if (!vehicle) {
-      return res.status(404).json({ error: 'Vehicle not found or unauthorized' });
-    }
-    res.status(200).json({ message: 'Vehicle deleted' });
+    const result = await deleteVehicle(req.params.id, req.user.id);
+    res.status(200).json({ success: true, ...result });
   } catch (error) {
-    res.status(500).json({ error: `Failed to delete vehicle: ${error.message}` });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
-export { createVehicle, getVehicles, deleteVehicle };
+export { createVehicle, getVehicles, updateVehicle, deleteVehicle };
