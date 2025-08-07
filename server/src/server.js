@@ -15,7 +15,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json()); // Parse JSON body
+app.use(express.urlencoded({ extended: true })); // Parse URL-encoded body
 app.use('/uploads', express.static(__dirname + '/Uploads'));
 
 // Routes

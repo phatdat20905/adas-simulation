@@ -1,69 +1,91 @@
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import { registerUser, loginUser, refreshToken, getUsers, getCurrentUser, updateUser, deleteUser, logoutUser } from '../services/userService.js';
 
 const register = async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'All fields are required' });
+    const { username, email, phone, password, role } = req.body;
+    if (!username || !email || !phone || !password) {
+      return res.status(400).json({ success: false, message: 'All fields are required' });
     }
-
-    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
-    if (existingUser) {
-      return res.status(400).json({ error: 'Username or email already exists' });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = new User({
-      username,
-      email,
-      password: hashedPassword,
-      role: role || 'user',
-    });
-
-    await user.save();
-
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '1d',
-    });
-
-    res.status(201).json({ message: 'User registered', user: { id: user._id, username, role }, token });
+    const result = await registerUser({ username, email, phone, password, role });
+    res.status(201).json({ success: true, message: 'User registered', ...result });
   } catch (error) {
-    res.status(500).json({ error: `Registration failed: ${error.message}` });
+    res.status(400).json({ success: false, message: error.message });
   }
 };
 
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-      expiresIn: '1d',
-    });
-
-    res.status(200).json({ message: 'Login successful', user: { id: user._id, username: user.username, role: user.role }, token });
+    const result = await loginUser({ email, password });
+    res.status(200).json({ success: true, message: 'Login successful', ...result });
   } catch (error) {
-    res.status(500).json({ error: `Login failed: ${error.message}` });
+    res.status(401).json({ success: false, message: error.message });
+  }
+};
+
+const refresh = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(400).json({ success: false, message: 'Refresh token required' });
+    }
+    const result = await refreshToken(refreshToken);
+    res.status(200).json({ success: true, message: 'Token refreshed', ...result });
+  } catch (error) {
+    res.status(403).json({ success: false, message: error.message });
   }
 };
 
 const getUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-password').lean();
-    res.status(200).json(users);
+    const users = await getUsers();
+    res.status(200).json({ success: true, data: users });
   } catch (error) {
-    res.status(500).json({ error: `Failed to fetch users: ${error.message}` });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-export { register, login, getUsers };
+const getCurrentUser = async (req, res) => {
+  try {
+    const user = await getCurrentUser(req.user.id);
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    res.status(404).json({ success: false, message: error.message });
+  }
+};
+
+const updateUser = async (req, res) => {
+  try {
+    const { username, email, phone, password } = req.body;
+    if (!username && !email && !phone && !password) {
+      return res.status(400).json({ success: false, message: 'At least one field is required' });
+    }
+    const user = await updateUser(req.user.id, { username, email, phone, password });
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const result = await deleteUser(req.user.id);
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    res.status(404).json({ success: false, message: error.message });
+  }
+};
+
+const logout = async (req, res) => {
+  try {
+    const result = await logoutUser(req.user.id);
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    res.status(404).json({ success: false, message: error.message });
+  }
+};
+
+export { register, login, refresh, getUsers, getCurrentUser, updateUser, deleteUser, logout };

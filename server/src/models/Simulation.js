@@ -3,32 +3,41 @@ import mongoose from 'mongoose';
 const simulationSchema = new mongoose.Schema({
   filename: {
     type: String,
-    required: true,
+    required: [true, 'Tên file là bắt buộc'],
     trim: true,
   },
   filepath: {
     type: String,
-    required: true,
+    required: [true, 'Đường dẫn file là bắt buộc'],
     trim: true,
+    match: [/^https?:\/\/[^\s$.?#].[^\s]*$/, 'Đường dẫn file không hợp lệ'],
   },
   fileType: {
     type: String,
     enum: ['image', 'video'],
-    required: true,
+    required: [true, 'Loại file là bắt buộc'],
   },
   result: {
-    type: mongoose.Schema.Types.Mixed,
+    type: {
+      totalAlerts: { type: Number, default: 0 },
+      collisionCount: { type: Number, default: 0 },
+      laneDepartureCount: { type: Number, default: 0 },
+      obstacleCount: { type: Number, default: 0 },
+      trafficSignCount: { type: Number, default: 0 },
+    },
     default: {},
   },
   vehicleId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Vehicle',
     required: true,
+    index: true,
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
+    index: true,
   },
   status: {
     type: String,
@@ -50,8 +59,11 @@ const simulationSchema = new mongoose.Schema({
   },
 });
 
-simulationSchema.pre('save', function (next) {
+simulationSchema.pre('save', async function (next) {
   this.updatedAt = Date.now();
+  if (this.isNew || this.isModified('sensorDataCount')) {
+    this.sensorDataCount = await mongoose.model('SensorData').countDocuments({ simulationId: this._id });
+  }
   next();
 });
 

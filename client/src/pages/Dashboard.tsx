@@ -19,13 +19,13 @@ function Dashboard() {
       setIsLoading(true);
       try {
         const simResponse = await getSimulations(simPage);
-        setSimulations(simResponse.data.simulations);
-        setSimTotalPages(simResponse.data.totalPages);
+        setSimulations(simResponse?.data?.simulations || []); // Mảng rỗng nếu undefined
+        setSimTotalPages(simResponse?.data?.totalPages || 1);
         const alertResponse = await getAlerts(alertPage);
-        setAlerts(alertResponse.data.alerts);
-        setAlertTotalPages(alertResponse.data.totalPages);
+        setAlerts(alertResponse?.data?.alerts || []); // Mảng rỗng nếu undefined
+        setAlertTotalPages(alertResponse?.data?.totalPages || 1);
       } catch (err: any) {
-        toast.error('Failed to fetch dashboard data');
+        toast.error(err.message || 'Failed to fetch dashboard data');
       } finally {
         setIsLoading(false);
       }
@@ -45,12 +45,12 @@ function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white p-4 rounded shadow">
               <h3 className="text-lg font-semibold mb-2">Recent Simulations</h3>
-              {simulations.length === 0 && !isLoading ? (
+              {!isLoading && (!simulations || simulations.length === 0) ? (
                 <p className="text-gray-500">No simulations yet. Try uploading a video!</p>
               ) : (
                 <>
                   <ul>
-                    {simulations.map((sim) => (
+                    {simulations?.map((sim) => (
                       <li key={sim._id} className="mb-2">
                         <a href={`/simulations/${sim._id}`} className="text-blue-500 hover:underline">
                           {sim.filename} ({sim.status})
@@ -80,12 +80,12 @@ function Dashboard() {
             </div>
             <div className="bg-white p-4 rounded shadow">
               <h3 className="text-lg font-semibold mb-2">Recent Alerts</h3>
-              {alerts.length === 0 && !isLoading ? (
+              {!isLoading && (!alerts || alerts.length === 0) ? (
                 <p className="text-gray-500">No alerts yet.</p>
               ) : (
                 <>
                   <ul>
-                    {alerts.map((alert) => (
+                    {alerts?.map((alert) => (
                       <li key={alert._id} className="mb-2">
                         {alert.description} -{' '}
                         <span className={`font-semibold ${alert.severity === 'high' ? 'text-red-500' : 'text-yellow-500'}`}>

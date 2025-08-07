@@ -43,6 +43,7 @@ export interface Alert {
 }
 
 export interface ApiResponse<T> {
+  length: number;
   data: T;
   totalPages?: number;
 }
