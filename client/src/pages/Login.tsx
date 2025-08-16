@@ -1,35 +1,42 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../services/api';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateEmail(email)) {
-      toast.error('Invalid email format');
+      toast.error('Email không hợp lệ');
       return;
     }
     if (password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error('Mật khẩu phải có ít nhất 6 ký tự');
       return;
     }
     setIsLoading(true);
     try {
       const response = await login({ email, password });
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      localStorage.setItem('token', response.data.token);
-      toast.success('Login successful!');
-      setTimeout(() => navigate('/dashboard'), 1000);
+      console.log('Login response:', response.data);
+      if (response.data.success) {
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        localStorage.setItem('token', response.data.accessToken);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+        toast.success('Đăng nhập thành công!');
+        navigate('/dashboard'); // Bỏ setTimeout để chuyển trang ngay
+      } else {
+        toast.error(response.data.message);
+      }
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Login failed');
+      console.error('Login error:', err.response?.data);
+      toast.error(err.response?.data?.message || 'Đăng nhập thất bại');
     } finally {
       setIsLoading(false);
     }
@@ -37,10 +44,9 @@ function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <Toaster position="top-right" />
       <div className="bg-white p-6 rounded shadow max-w-md w-full">
         <img src="/logo.png" alt="Logo" className="w-24 h-24 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold mb-4 text-center">Login</h2>
+        <h2 className="text-2xl font-bold mb-4 text-center">Đăng nhập</h2>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block mb-1">Email</label>
@@ -54,7 +60,7 @@ function Login() {
             />
           </div>
           <div className="mb-4">
-            <label className="block mb-1">Password</label>
+            <label className="block mb-1">Mật khẩu</label>
             <input
               type="password"
               value={password}
@@ -69,11 +75,11 @@ function Login() {
             className="bg-blue-500 text-white p-2 rounded w-full hover:bg-blue-600 disabled:opacity-50"
             disabled={isLoading}
           >
-            {isLoading ? 'Logging in...' : 'Login'}
+            {isLoading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
         <p className="mt-4 text-center">
-          Don't have an account? <a href="/register" className="text-blue-500">Register</a>
+          Chưa có tài khoản? <a href="/register" className="text-blue-500">Đăng ký</a>
         </p>
       </div>
     </div>

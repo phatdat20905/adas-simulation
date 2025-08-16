@@ -10,16 +10,16 @@ const createSimulation = async ({ filename, filepath, fileType, vehicleId, userI
   return simulation;
 };
 
-const getSimulations = async (userId, page, limit) => {
+const getSimulations = async (userId, page, limit, role) => {
   const skip = (page - 1) * limit;
-  const query = req.user.role === 'admin' ? {} : { userId };
+  const query = role === 'admin' ? {} : { userId };
   const simulations = await Simulation.find(query).skip(skip).limit(limit).lean();
   const total = await Simulation.countDocuments(query);
   return { simulations: simulations || [], totalPages: Math.ceil(total / limit) || 1 };
 };
 
-const getSimulationById = async (simulationId, userId) => {
-  const query = req.user.role === 'admin' ? { _id: simulationId } : { _id: simulationId, userId };
+const getSimulationById = async (simulationId, userId, role) => {
+  const query = role === 'admin' ? { _id: simulationId } : { _id: simulationId, userId };
   const simulation = await Simulation.findOne(query).lean();
   if (!simulation) {
     throw new Error('Simulation not found or unauthorized');
@@ -27,8 +27,8 @@ const getSimulationById = async (simulationId, userId) => {
   return simulation;
 };
 
-const updateSimulation = async (simulationId, userId, updates) => {
-  const query = req.user.role === 'admin' ? { _id: simulationId } : { _id: simulationId, userId };
+const updateSimulation = async (simulationId, userId, updates, role) => {
+  const query = role === 'admin' ? { _id: simulationId } : { _id: simulationId, userId };
   const simulation = await Simulation.findOneAndUpdate(
     query,
     { $set: updates },
@@ -40,8 +40,8 @@ const updateSimulation = async (simulationId, userId, updates) => {
   return simulation;
 };
 
-const deleteSimulation = async (simulationId, userId) => {
-  const query = req.user.role === 'admin' ? { _id: simulationId } : { _id: simulationId, userId };
+const deleteSimulation = async (simulationId, userId, role) => {
+  const query = role === 'admin' ? { _id: simulationId } : { _id: simulationId, userId };
   const simulation = await Simulation.findOneAndDelete(query);
   if (!simulation) {
     throw new Error('Simulation not found or unauthorized');

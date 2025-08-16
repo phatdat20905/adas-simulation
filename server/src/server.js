@@ -21,6 +21,14 @@ const server = createServer(app);
 const io = initSocket(server);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+// Middleware
+app.use(cors());
+app.use(morgan('combined')); // Thêm Morgan logging
+app.use(helmet());
+app.use(express.json()); // Parse JSON body
+app.use(express.urlencoded({ extended: true })); // Parse URL-encoded body
+app.use('/Uploads', express.static(__dirname + '/Uploads'));
+
 
 // Rate limit cho /api/simulations/simulate
 const simulateLimiter = rateLimit({
@@ -36,13 +44,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Middleware
-app.use(cors());
-app.use(morgan('combined')); // Thêm Morgan logging
-app.use(helmet());
-app.use(express.json()); // Parse JSON body
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded body
-app.use('/Uploads', express.static(__dirname + '/Uploads'));
+
 
 // Routes
 app.use('/api', apiRoutes);

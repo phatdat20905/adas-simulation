@@ -11,7 +11,7 @@ const router = express.Router();
 router.use('/users', userRoutes);
 router.use('/vehicles', vehicleRoutes);
 router.use('/upload', uploadRoutes);
-router.use('/simulate', simulationRoutes);
+router.use('/simulates', simulationRoutes);
 router.use('/alerts', alertRoutes);
 router.use('/sensordata', sensorDataRoutes);
 

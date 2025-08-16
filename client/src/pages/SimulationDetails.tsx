@@ -1,32 +1,45 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { getSensorData, getAlerts } from '../services/api';
+import { getSimulationById, getSensorDataBySimulation, getAlerts } from '../services/api';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import SensorChart from '../components/SensorChart';
-import toast, { Toaster } from 'react-hot-toast';
-import type { SensorData, Alert } from '../types';
+import toast from 'react-hot-toast';
+import type { Simulation, SensorData, Alert } from '../types';
 
 function SimulationDetails() {
   const { id } = useParams<{ id: string }>();
+  const [simulation, setSimulation] = useState<Simulation | null>(null);
   const [sensorData, setSensorData] = useState<SensorData[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
+  const [page, setPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchData = async () => {
       if (!id) return;
       setIsLoading(true);
       try {
-        const sensorResponse = await getSensorData(id, page);
-        setSensorData(sensorResponse.data.sensorData);
-        setTotalPages(sensorResponse.data.totalPages);
+        const simResponse = await getSimulationById(id);
+        console.log('Simulation response:', simResponse.data); // Debug
+        if (simResponse.data.success) {
+          setSimulation(simResponse.data.data);
+        }
+        const sensorResponse = await getSensorDataBySimulation(id, page);
+        console.log('SensorData response:', sensorResponse.data); // Debug
+        if (sensorResponse.data.success) {
+          setSensorData(sensorResponse.data.data.sensorData || []);
+          setTotalPages(sensorResponse.data.data.totalPages || 1);
+        }
         const alertResponse = await getAlerts(page);
-        setAlerts(alertResponse.data.alerts.filter((alert) => alert.simulationId === id));
+        console.log('Alerts response:', alertResponse.data); // Debug
+        if (alertResponse.data.success) {
+          setAlerts(alertResponse.data.data.alerts?.filter((alert: Alert) => alert.simulationId === id) || []);
+        }
       } catch (err: any) {
-        toast.error('Failed to fetch simulation details');
+        console.error('SimulationDetails error:', err.response?.data); // Debug
+        toast.error(err.response?.data?.message || 'Không thể tải chi tiết mô phỏng');
       } finally {
         setIsLoading(false);
       }
@@ -36,45 +49,54 @@ function SimulationDetails() {
 
   return (
     <div className="flex min-h-screen">
-      <Toaster position="top-right" />
       <Sidebar />
       <div className="flex-1">
         <Header />
         <main className="p-6 bg-gray-100">
-          <h2 className="text-2xl font-bold mb-4">Simulation Details</h2>
-          {isLoading && <p className="text-center">Loading...</p>}
+          <h2 className="text-2xl font-bold mb-4">Chi tiết mô phỏng</h2>
+          {isLoading && <p className="text-center">Đang tải...</p>}
+          {simulation && (
+            <div className="bg-white p-4 rounded shadow mb-6">
+              <h3 className="text-lg font-semibold mb-2">Thông tin mô phỏng</h3>
+              <p><strong>Tên file:</strong> {simulation.filename}</p>
+              <p><strong>Trạng thái:</strong> {simulation.status}</p>
+              <p><strong>Số cảnh báo:</strong> {simulation.result.totalAlerts}</p>
+              <p><strong>Va chạm:</strong> {simulation.result.collisionCount}</p>
+              <p><strong>Lệch làn:</strong> {simulation.result.laneDepartureCount}</p>
+              <p><strong>Chướng ngại vật:</strong> {simulation.result.obstacleCount}</p>
+              <p><strong>Biển báo:</strong> {simulation.result.trafficSignCount}</p>
+            </div>
+          )}
           <div className="bg-white p-4 rounded shadow mb-6">
-            <h3 className="text-lg font-semibold mb-2">Sensor Data</h3>
+            <h3 className="text-lg font-semibold mb-2">Dữ liệu cảm biến</h3>
             {sensorData.length === 0 && !isLoading ? (
-              <p className="text-gray-500">No sensor data available.</p>
+              <p className="text-gray-500">Không có dữ liệu cảm biến.</p>
             ) : (
               <>
                 <SensorChart sensorData={sensorData} />
                 <table className="w-full border-collapse mt-4">
                   <thead>
                     <tr className="bg-gray-200">
-                      <th className="border p-2">Timestamp</th>
-                      <th className="border p-2">Speed (km/h)</th>
-                      <th className="border p-2">Distance (m)</th>
-                      <th className="border p-2">Lane Status</th>
-                      <th className="border p-2">Obstacle</th>
-                      <th className="border p-2">Alert Level</th>
+                      <th className="border p-2">Thời gian</th>
+                      <th className="border p-2">Tốc độ (km/h)</th>
+                      <th className="border p-2">Khoảng cách (m)</th>
+                      <th className="border p-2">Trạng thái làn</th>
+                      <th className="border p-2">Chướng ngại</th>
                       <th className="border p-2">Frame</th>
                     </tr>
                   </thead>
                   <tbody>
                     {sensorData.map((data) => (
                       <tr key={data._id}>
-                        <td className="border p-2">{new Date(data.timestamp).toLocaleString()}</td>
+                        <td className="border p-2">{new Date(data.timestamp).toLocaleString('vi-VN')}</td>
                         <td className="border p-2">{data.speed}</td>
                         <td className="border p-2">{data.distance_to_object || 'N/A'}</td>
                         <td className="border p-2">{data.lane_status}</td>
-                        <td className="border p-2">{data.obstacle_detected ? 'Yes' : 'No'}</td>
-                        <td className="border p-2">{data.alertLevel}</td>
+                        <td className="border p-2">{data.obstacle_detected ? 'Có' : 'Không'}</td>
                         <td className="border p-2">
                           {data.camera_frame_url && (
                             <img
-                              src={`http://localhost:5000${data.camera_frame_url}`}
+                              src={data.camera_frame_url}
                               alt="Frame"
                               className="w-24 h-24 object-cover"
                             />
@@ -90,30 +112,30 @@ function SimulationDetails() {
                     disabled={page === 1 || isLoading}
                     className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300"
                   >
-                    Previous
+                    Trước
                   </button>
-                  <span>Page {page} of {totalPages}</span>
+                  <span>Trang {page}/{totalPages}</span>
                   <button
                     onClick={() => setPage((p) => p + 1)}
                     disabled={page === totalPages || isLoading}
                     className="px-4 py-2 bg-gray-200 rounded disabled:opacity-50 hover:bg-gray-300"
                   >
-                    Next
+                    Sau
                   </button>
                 </div>
               </>
             )}
           </div>
           <div className="bg-white p-4 rounded shadow">
-            <h3 className="text-lg font-semibold mb-2">Alerts</h3>
+            <h3 className="text-lg font-semibold mb-2">Cảnh báo</h3>
             {alerts.length === 0 && !isLoading ? (
-              <p className="text-gray-500">No alerts for this simulation.</p>
+              <p className="text-gray-500">Không có cảnh báo cho mô phỏng này.</p>
             ) : (
               <ul>
                 {alerts.map((alert) => (
                   <li key={alert._id} className="mb-2">
                     {alert.description} -{' '}
-                    <span className={`font-semibold ${alert.severity === 'high' ? 'text-red-500' : 'text-yellow-500'}`}>
+                    <span className={`font-semibold ${alert.severity === 'high' ? 'text-red-500' : alert.severity === 'medium' ? 'text-orange-500' : 'text-yellow-500'}`}>
                       {alert.severity}
                     </span>
                   </li>
