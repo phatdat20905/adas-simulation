@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from utils.video_processor import process_media
 from utils.logger import setup_logger
+from pathlib import Path
 import os
 import time
 
@@ -43,7 +44,8 @@ class ProcessResponse(BaseModel):
 async def process_adas(request: ProcessRequest):
     start_time = time.time()
     try:
-        filepath = request.filepath
+        # Điều chỉnh filepath để khớp với server/Uploads
+        filepath = str(Path(__file__).parent.parent / "server" / request.filepath.lstrip("/"))
         vehicle_id = request.vehicleId
         simulation_id = request.simulationId
         user_id = request.userId

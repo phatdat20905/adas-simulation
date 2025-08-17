@@ -3,6 +3,7 @@ import { extname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import * as uploadService from '../services/uploadService.js';
+import fs from 'fs/promises';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -28,6 +29,7 @@ const upload = multer({
       cb(new Error('Images (jpeg, jpg, png) or videos (mp4) only!'));
     }
   },
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
 }).single('file');
 
 const uploadFile = async (req, res) => {
@@ -47,9 +49,13 @@ const uploadFile = async (req, res) => {
       res.status(201).json({
         success: true,
         message: 'File uploaded and simulation created',
-        data: simulation,
+        data: { simulation },
       });
     } catch (error) {
+      console.error('Upload error:', error);
+      if (req.file) {
+        await fs.unlink(join(__dirname, '../../Uploads/', req.file.filename)).catch((err) => console.error('Failed to delete file:', err));
+      }
       res.status(400).json({ success: false, message: `Failed to save simulation: ${error.message}` });
     }
   });

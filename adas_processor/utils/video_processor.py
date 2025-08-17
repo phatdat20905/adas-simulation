@@ -49,6 +49,7 @@ def process_image(frame, vehicle_id, simulation_id, user_id, timestamp, frames_d
 
     # Save frame if alert
     if alert_level != "none":
+        frames_dir.mkdir(exist_ok=True)
         frame_filename = f"frame_{simulation_id}_{timestamp.isoformat().replace(':', '-')}.jpg"
         frame_path = frames_dir / frame_filename
         cv2.imwrite(str(frame_path), frame)

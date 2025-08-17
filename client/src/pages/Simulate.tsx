@@ -21,15 +21,15 @@ function Simulate() {
       setIsLoading(true);
       try {
         const response = await getVehicles();
-        console.log('Vehicles response:', response.data); // Debug
+        console.log('Vehicles response:', response.data);
         if (response.data.success) {
-          setVehicles(response.data.data.vehicles || []);
-          if (response.data.data.vehicles?.length > 0) setVehicleId(response.data.data.vehicles[0]._id);
+          setVehicles(response.data.data?.vehicles || []);
+          if (response.data.data?.vehicles?.length > 0) setVehicleId(response.data.data.vehicles[0]._id);
         } else {
-          toast.error(response.data.message);
+          toast.error(response.data.message || 'Không thể tải danh sách xe');
         }
       } catch (err: any) {
-        console.error('Vehicles error:', err.response?.data); // Debug
+        console.error('Vehicles error:', err.response?.data);
         toast.error(err.response?.data?.message || 'Không thể tải danh sách xe');
       } finally {
         setIsLoading(false);
@@ -38,9 +38,10 @@ function Simulate() {
     fetchVehicles();
 
     socket.on('simulationStatus', (data: { simulationId: string; status: string }) => {
+      console.log('Simulation status:', data); // Debug
       toast.custom(
-        <div className="p-4 rounded shadow bg-blue-100">
-          Mô phỏng {data.simulationId}: {data.status}
+        <div className={`p-4 rounded shadow ${data.status === 'failed' ? 'bg-red-100' : 'bg-blue-100'}`}>
+          Mô phỏng {data.simulationId}: {data.status === 'completed' ? 'Hoàn thành' : 'Thất bại'}
         </div>
       );
       if (data.status === 'completed') {
@@ -82,22 +83,24 @@ function Simulate() {
       formData.append('file', file);
       formData.append('vehicleId', vehicleId);
       const uploadResponse = await uploadFile(formData);
-      console.log('Upload response:', uploadResponse.data); // Debug
-      if (uploadResponse.data.success) {
-        const simulationId = uploadResponse.data.data.simulation._id;
-        const simulateResponse = await simulateADAS({ simulationId });
-        console.log('Simulate response:', simulateResponse.data); // Debug
-        if (simulateResponse.data.success) {
-          toast.success('Bắt đầu mô phỏng!');
-        } else {
-          toast.error(simulateResponse.data.message);
-        }
+      console.log('Upload response:', uploadResponse.data);
+      if (!uploadResponse.data.success) {
+        throw new Error(uploadResponse.data.message || 'Upload failed');
+      }
+      const simulationId = uploadResponse.data.data?.simulation?._id;
+      if (!simulationId) {
+        throw new Error('Simulation ID not found in upload response');
+      }
+      const simulateResponse = await simulateADAS({ simulationId });
+      console.log('Simulate response:', simulateResponse.data);
+      if (simulateResponse.data.success) {
+        toast.success('Bắt đầu mô phỏng!');
       } else {
-        toast.error(uploadResponse.data.message);
+        throw new Error(simulateResponse.data.message || 'Simulation failed');
       }
     } catch (err: any) {
-      console.error('Simulate error:', err.response?.data); // Debug
-      toast.error(err.response?.data?.message || 'Mô phỏng thất bại');
+      console.error('Simulate error:', err.response?.data || err.message);
+      toast.error(err.response?.data?.message || err.message || 'Mô phỏng thất bại');
     } finally {
       setIsLoading(false);
     }
