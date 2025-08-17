@@ -10,6 +10,7 @@ LANENET_MODEL_PATH = str(BASE_DIR / "models" / "lanenet_model.pth")
 
 # Frames directory (đồng bộ với backend Node.js)
 FRAMES_DIR = str(BASE_DIR.parent / "server" / "Uploads" / "frames")
+VIDEOS_DIR = str(BASE_DIR.parent / "server" / "Uploads" / "videos")
 
 # ADAS parameters
 FRAME_INTERVAL = 0.5  # Save sensor data every 0.5s

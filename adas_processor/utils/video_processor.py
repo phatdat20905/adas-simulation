@@ -30,6 +30,16 @@ def process_image(frame, vehicle_id, simulation_id, user_id, timestamp, frames_d
     alert_description = None
     frame_url = None
 
+    # Luôn lưu frame để tạo video sau này
+    frames_dir.mkdir(exist_ok=True)
+    frame_filename = f"frame_{simulation_id}_{timestamp.isoformat().replace(':', '-')}.jpg"
+    frame_path = frames_dir / frame_filename
+    if cv2.imwrite(str(frame_path), frame):
+        frame_url = f"/Uploads/frames/{frame_filename}"
+        logger.info(f"Frame saved: {frame_path}")
+    else:
+        logger.error(f"Failed to save frame: {frame_path}")
+
     if obstacle_detected and min_distance < DISTANCE_THRESHOLD_COLLISION:
         alert_level = "high"
         alert_type = "collision"
@@ -47,13 +57,7 @@ def process_image(frame, vehicle_id, simulation_id, user_id, timestamp, frames_d
         alert_type = "traffic_sign"
         alert_description = f"Traffic sign ({traffic_sign['type']}) detected"
 
-    # Save frame if alert
     if alert_level != "none":
-        frames_dir.mkdir(exist_ok=True)
-        frame_filename = f"frame_{simulation_id}_{timestamp.isoformat().replace(':', '-')}.jpg"
-        frame_path = frames_dir / frame_filename
-        cv2.imwrite(str(frame_path), frame)
-        frame_url = f"/Uploads/frames/{frame_filename}"
         alerts.append({
             "type": alert_type,
             "description": alert_description,
@@ -181,10 +185,5 @@ def process_media(filepath, vehicle_id, simulation_id, user_id):
         }, first_objects, first_lane_points
     
     finally:
-        # Cleanup frames
-        try:
-            shutil.rmtree(frames_dir)
-            frames_dir.mkdir(exist_ok=True)
-            logger.info("Frames directory cleaned")
-        except Exception as e:
-            logger.error(f"Failed to clean frames directory: {str(e)}")
+        # Không xóa frames_dir để giữ lại frame cho việc tạo video
+        logger.info("Frames retained for video creation")

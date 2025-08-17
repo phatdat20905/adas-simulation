@@ -8,6 +8,8 @@ import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 
+import { io } from '../server.js'; // Đảm bảo đường dẫn đúng với cấu trúc dự án
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const createSimulation = async (req, res) => {
@@ -84,12 +86,25 @@ const simulateADAS = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Simulation not found or unauthorized' });
     }
 
+    const absoluteFilepath = join(__dirname, '../../', simulation.filepath);
+    console.log('Simulate ADAS filepath:', absoluteFilepath);
     const results = await processADAS(
-      join(__dirname, '../../', simulation.filepath),
+      simulation.filepath,
       simulation.vehicleId.toString(),
       simulationId,
       simulation.userId.toString()
-    );
+    ).catch((error) => {
+      console.error('ADAS processing error:', error);
+      throw new Error(`ADAS processing failed: ${error.message}`);
+    });
+
+    // Chuyển đổi camera_frame_url thành URL đầy đủ nếu cần
+    if (results.sensorData) {
+      results.sensorData = results.sensorData.map(data => ({
+        ...data,
+        camera_frame_url: data.camera_frame_url ? `http://localhost:5000${data.camera_frame_url}` : null,
+      }));
+    }
 
     simulation.result = results.summary || {
       totalAlerts: 0,
@@ -100,6 +115,7 @@ const simulateADAS = async (req, res) => {
     };
     simulation.status = results.status || 'completed';
     simulation.sensorDataCount = results.sensorData?.length || 0;
+    simulation.videoUrl = results.videoUrl || null;
     await simulation.save();
 
     if (results.sensorData && results.sensorData.length) {
@@ -127,7 +143,6 @@ const simulateADAS = async (req, res) => {
         }))
       );
 
-      const { io } = require('../index.js');
       savedAlerts.forEach((alert) => {
         emitAlert(io, simulation.userId.toString(), alert);
       });
@@ -143,10 +158,16 @@ const simulateADAS = async (req, res) => {
       }
     }
 
+    io.to(simulation.userId.toString()).emit('simulationStatus', {
+      simulationId,
+      status: simulation.status,
+      videoUrl: simulation.videoUrl,
+    });
+
     res.status(200).json({
       success: true,
       message: 'Simulation completed',
-      data: simulation,
+      data: { ...simulation.toObject(), videoUrl: simulation.videoUrl },
     });
   } catch (error) {
     console.error('Simulate ADAS error:', error);
@@ -154,6 +175,10 @@ const simulateADAS = async (req, res) => {
     if (simulation) {
       simulation.status = 'failed';
       await simulation.save();
+      io.to(simulation.userId.toString()).emit('simulationStatus', {
+        simulationId,
+        status: 'failed',
+      });
     }
     res.status(500).json({ success: false, message: `Simulation failed: ${error.message}` });
   }

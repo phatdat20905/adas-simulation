@@ -48,6 +48,10 @@ const simulationSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  videoUrl: { 
+    type: String, 
+    default: null 
+  }, // Thêm trường videoUrl
   createdAt: {
     type: Date,
     default: Date.now,

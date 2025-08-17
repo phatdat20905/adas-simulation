@@ -4,6 +4,7 @@ import { getSimulationById, getSensorDataBySimulation, getAlerts } from '../serv
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
 import SensorChart from '../components/SensorChart';
+import ReactPlayer from 'react-player';
 import toast from 'react-hot-toast';
 import type { Simulation, SensorData, Alert } from '../types';
 
@@ -71,6 +72,12 @@ function SimulationDetails() {
               <p><strong>Lệch làn:</strong> {simulation.result.laneDepartureCount}</p>
               <p><strong>Chướng ngại vật:</strong> {simulation.result.obstacleCount}</p>
               <p><strong>Biển báo:</strong> {simulation.result.trafficSignCount}</p>
+              {simulation.videoUrl && (
+                <div className="mt-4">
+                  <h4 className="text-lg font-semibold mb-2">Video kết quả</h4>
+                  <ReactPlayer url={`http://localhost:5000${simulation.videoUrl}`} controls width="100%" height="auto" />
+                </div>
+              )}
             </div>
           )}
           <div className="bg-white p-4 rounded shadow mb-6">
@@ -102,7 +109,7 @@ function SimulationDetails() {
                         <td className="border p-2">
                           {data.camera_frame_url && (
                             <img
-                              src={data.camera_frame_url}
+                              src={`http://localhost:5000${data.camera_frame_url}`}
                               alt="Frame"
                               className="w-24 h-24 object-cover"
                             />

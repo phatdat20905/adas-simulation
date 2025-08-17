@@ -47,7 +47,7 @@ const sensorDataSchema = new mongoose.Schema({
     type: String,
     trim: true,
     required: false,
-    match: [/^https?:\/\/[^\s$.?#].[^\s]*$/, 'URL không hợp lệ'],
+    // match: [/^https?:\/\/[^\s$.?#].[^\s]*$/, 'URL không hợp lệ'],
   },
   createdAt: {
     type: Date,
