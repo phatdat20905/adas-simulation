@@ -24,25 +24,27 @@ const createSensorData = async ({ vehicleId, simulationId, userId, timestamp, sp
   return sensorData;
 };
 
-const getSensorData = async (userId, page, limit) => {
+const getSensorData = async (userId, page, limit, role) => {
   const skip = (page - 1) * limit;
-  const query = req.user.role === 'admin' ? {} : { userId };
+  const query = role === 'admin' ? {} : { userId };
   const sensorData = await SensorData.find(query).skip(skip).limit(limit).lean();
   const total = await SensorData.countDocuments(query);
   return { sensorData: sensorData || [], totalPages: Math.ceil(total / limit) || 1 };
 };
 
-const getSensorDataBySimulation = async (simulationId, userId) => {
-  const query = req.user.role === 'admin' ? { simulationId } : { simulationId, userId };
-  const sensorData = await SensorData.find(query).sort({ timestamp: 1 }).lean();
-  if (!sensorData.length && req.user.role !== 'admin') {
-    throw new Error('Sensor data not found or unauthorized');
+const getSensorDataBySimulation = async (simulationId, userId, page, limit, role) => {
+  if (!(await Simulation.exists({ _id: simulationId, userId: role === 'admin' ? { $exists: true } : userId }))) {
+    throw new Error('Simulation not found or unauthorized');
   }
-  return sensorData;
+  const skip = (page - 1) * limit;
+  const query = role === 'admin' ? { simulationId } : { simulationId, userId };
+  const sensorData = await SensorData.find(query).sort({ timestamp: 1 }).skip(skip).limit(limit).lean();
+  const total = await SensorData.countDocuments(query);
+  return { sensorData: sensorData || [], totalPages: Math.ceil(total / limit) || 1 };
 };
 
-const updateSensorData = async (sensorDataId, userId, updates) => {
-  const query = req.user.role === 'admin' ? { _id: sensorDataId } : { _id: sensorDataId, userId };
+const updateSensorData = async (sensorDataId, userId, updates, role) => {
+  const query = role === 'admin' ? { _id: sensorDataId } : { _id: sensorDataId, userId };
   const sensorData = await SensorData.findOneAndUpdate(
     query,
     { $set: updates },
@@ -54,8 +56,8 @@ const updateSensorData = async (sensorDataId, userId, updates) => {
   return sensorData;
 };
 
-const deleteSensorData = async (sensorDataId, userId) => {
-  const query = req.user.role === 'admin' ? { _id: sensorDataId } : { _id: sensorDataId, userId };
+const deleteSensorData = async (sensorDataId, userId, role) => {
+  const query = role === 'admin' ? { _id: sensorDataId } : { _id: sensorDataId, userId };
   const sensorData = await SensorData.findOneAndDelete(query);
   if (!sensorData) {
     throw new Error('Sensor data not found or unauthorized');

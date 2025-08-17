@@ -10,7 +10,7 @@ const simulationSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Đường dẫn file là bắt buộc'],
     trim: true,
-    match: [/^https?:\/\/[^\s$.?#].[^\s]*$/, 'Đường dẫn file không hợp lệ'],
+    // match: [/^https?:\/\/[^\s$.?#].[^\s]*$/, 'Đường dẫn file không hợp lệ'],
   },
   fileType: {
     type: String,

@@ -22,23 +22,29 @@ function SimulationDetails() {
       setIsLoading(true);
       try {
         const simResponse = await getSimulationById(id);
-        console.log('Simulation response:', simResponse.data); // Debug
+        console.log('Simulation response:', simResponse.data);
         if (simResponse.data.success) {
           setSimulation(simResponse.data.data);
+        } else {
+          toast.error(simResponse.data.message || 'Lỗi khi tải mô phỏng');
         }
         const sensorResponse = await getSensorDataBySimulation(id, page);
-        console.log('SensorData response:', sensorResponse.data); // Debug
+        console.log('SensorData response:', sensorResponse.data);
         if (sensorResponse.data.success) {
-          setSensorData(sensorResponse.data.data.sensorData || []);
-          setTotalPages(sensorResponse.data.data.totalPages || 1);
+          setSensorData(sensorResponse.data.data?.sensorData || []);
+          setTotalPages(sensorResponse.data.data?.totalPages || 1);
+        } else {
+          toast.error(sensorResponse.data.message || 'Lỗi khi tải dữ liệu cảm biến');
         }
         const alertResponse = await getAlerts(page);
-        console.log('Alerts response:', alertResponse.data); // Debug
+        console.log('Alerts response:', alertResponse.data);
         if (alertResponse.data.success) {
-          setAlerts(alertResponse.data.data.alerts?.filter((alert: Alert) => alert.simulationId === id) || []);
+          setAlerts(alertResponse.data.data?.alerts?.filter((alert: Alert) => alert.simulationId === id) || []);
+        } else {
+          toast.error(alertResponse.data.message || 'Lỗi khi tải cảnh báo');
         }
       } catch (err: any) {
-        console.error('SimulationDetails error:', err.response?.data); // Debug
+        console.error('SimulationDetails error:', err.response?.data);
         toast.error(err.response?.data?.message || 'Không thể tải chi tiết mô phỏng');
       } finally {
         setIsLoading(false);
