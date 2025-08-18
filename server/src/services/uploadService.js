@@ -11,7 +11,7 @@ const uploadFile = async ({ file, vehicleId, userId }) => {
 
   const simulation = await createSimulation({
     filename: file.filename,
-    filepath: `/Uploads/${file.filename}`,
+    filepath: `/Uploads/videos/${file.filename}`, // Lưu vào Uploads/videos
     fileType: file.mimetype.startsWith('video') ? 'video' : 'image',
     vehicleId,
     userId,

@@ -7,6 +7,7 @@ from pathlib import Path
 import os
 import time
 import cv2
+import shutil
 from config.config import FRAMES_DIR, VIDEOS_DIR
 
 app = FastAPI()
@@ -45,19 +46,20 @@ class ProcessResponse(BaseModel):
 
 def create_video_from_frames(simulation_id: str, frames_dir: Path, output_dir: Path):
     """Create video from frames using OpenCV"""
-    output_dir.mkdir(exist_ok=True)
+    output_dir.mkdir(exist_ok=True, parents=True)
     output_video = str(output_dir / f"simulation_{simulation_id}.mp4")
-    frame_files = sorted([f for f in frames_dir.glob(f"frame_{simulation_id}_*.jpg")])
+    frame_files = sorted(frames_dir.glob(f"frame_{simulation_id}_*.jpg"))
     
     if not frame_files:
         logger.error(f"No frames found for simulation {simulation_id} in {frames_dir}")
         return None
 
-    # Lấy thông tin từ frame đầu tiên
+    # Read first frame
     frame = cv2.imread(str(frame_files[0]))
     if frame is None:
         logger.error(f"Failed to read frame: {frame_files[0]}")
         return None
+
     height, width, _ = frame.shape
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(output_video, fourcc, 10.0, (width, height))
@@ -65,16 +67,18 @@ def create_video_from_frames(simulation_id: str, frames_dir: Path, output_dir: P
     for frame_file in frame_files:
         frame = cv2.imread(str(frame_file))
         if frame is None:
-            logger.error(f"Failed to read frame: {frame_file}")
+            logger.warning(f"Skipping unreadable frame: {frame_file}")
             continue
         out.write(frame)
     
     out.release()
     if os.path.exists(output_video):
         logger.info(f"Video created: {output_video}")
-        return f"/Uploads/videos/simulation_{simulation_id}.mp4"
+        # ✅ Delete frames only after success
+        shutil.rmtree(frames_dir, ignore_errors=True)
+        return f"/Processed/videos/simulation_{simulation_id}.mp4"
     else:
-        logger.error(f"Video creation failed for {output_video}")
+        logger.error(f"Video creation failed: {output_video}")
         return None
 
 @app.post("/process", response_model=ProcessResponse)
@@ -86,10 +90,9 @@ async def process_adas(request: ProcessRequest):
         simulation_id = request.simulationId
         user_id = request.userId
 
-        logger.info(f"Starting processing for file: {filepath}, simulation: {simulation_id}")
+        logger.info(f"Start processing file: {filepath}, simulation: {simulation_id}")
 
         if not os.path.exists(filepath):
-            logger.error(f"File not found: {filepath}")
             raise HTTPException(status_code=404, detail="File not found")
 
         result, _, _ = process_media(filepath, vehicle_id, simulation_id, user_id)
@@ -102,9 +105,6 @@ async def process_adas(request: ProcessRequest):
         logger.info(f"Processing completed for simulation {simulation_id}: {result['summary']['totalAlerts']} alerts in {processing_time:.2f}s")
 
         return {**result, "videoUrl": video_url}
-    except HTTPException as e:
-        logger.error(f"HTTP error: {str(e)}")
-        raise e
     except Exception as e:
         logger.error(f"Processing failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")

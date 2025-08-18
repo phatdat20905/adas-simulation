@@ -10,7 +10,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Multer storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, join(__dirname, '../../Uploads/'));
+    const dest = file.mimetype.startsWith('video') ? join(__dirname, '../../Uploads/videos') : join(__dirname, '../../Uploads/images');
+    cb(null, dest);
   },
   filename: (req, file, cb) => {
     cb(null, `${Date.now()}-${file.originalname}`);
@@ -54,7 +55,7 @@ const uploadFile = async (req, res) => {
     } catch (error) {
       console.error('Upload error:', error);
       if (req.file) {
-        await fs.unlink(join(__dirname, '../../Uploads/', req.file.filename)).catch((err) => console.error('Failed to delete file:', err));
+        await fs.unlink(join(__dirname, '../../Uploads/videos/', req.file.filename)).catch((err) => console.error('Failed to delete file:', err));
       }
       res.status(400).json({ success: false, message: `Failed to save simulation: ${error.message}` });
     }

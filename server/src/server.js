@@ -22,13 +22,19 @@ const server = createServer(app);
 const io = initSocket(server);
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-// Tạo thư mục Uploads/frames và Uploads/videos
+// Tạo các thư mục cần thiết
 const uploadsDir = join(__dirname, '../Uploads');
-const framesDir = join(__dirname, '../Uploads/frames');
-const videosDir = join(__dirname, '../Uploads/videos');
+const uploadsImagesDir = join(__dirname, '../Uploads/images');
+const uploadsVideosDir = join(__dirname, '../Uploads/videos');
+const processedDir = join(__dirname, '../Processed');
+const processedFramesDir = join(__dirname, '../Processed/frames');
+const processedVideosDir = join(__dirname, '../Processed/videos');
 fs.mkdir(uploadsDir, { recursive: true }).catch((err) => console.error('Failed to create uploads directory:', err));
-fs.mkdir(framesDir, { recursive: true }).catch((err) => console.error('Failed to create frames directory:', err));
-fs.mkdir(videosDir, { recursive: true }).catch((err) => console.error('Failed to create videos directory:', err));
+fs.mkdir(uploadsImagesDir, { recursive: true }).catch((err) => console.error('Failed to create images directory:', err));
+fs.mkdir(uploadsVideosDir, { recursive: true }).catch((err) => console.error('Failed to create videos directory:', err));
+fs.mkdir(processedDir, { recursive: true }).catch((err) => console.error('Failed to create processed directory:', err));
+fs.mkdir(processedFramesDir, { recursive: true }).catch((err) => console.error('Failed to create processed frames directory:', err));
+fs.mkdir(processedVideosDir, { recursive: true }).catch((err) => console.error('Failed to create processed videos directory:', err));
 
 // Middleware
 app.use(cors());
@@ -36,7 +42,8 @@ app.use(morgan('combined')); // Morgan logging
 app.use(helmet());
 app.use(express.json()); // Parse JSON body
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded body
-app.use('/Uploads', express.static(join(__dirname, '../Uploads'))); // Phục vụ file tĩnh
+app.use('/Uploads', express.static(join(__dirname, '../Uploads'))); // Phục vụ file tĩnh từ Uploads
+app.use('/Processed', express.static(join(__dirname, '../Processed'))); // Phục vụ file tĩnh từ Processed
 
 // Rate limit cho /api/simulations/simulate
 const simulateLimiter = rateLimit({

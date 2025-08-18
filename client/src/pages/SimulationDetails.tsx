@@ -67,11 +67,12 @@ function SimulationDetails() {
               <h3 className="text-lg font-semibold mb-2">Thông tin mô phỏng</h3>
               <p><strong>Tên file:</strong> {simulation.filename}</p>
               <p><strong>Trạng thái:</strong> {simulation.status}</p>
-              <p><strong>Số cảnh báo:</strong> {simulation.result.totalAlerts}</p>
+              <p><strong>Số cảnh báo:</strong> {simulation.result?.totalAlerts || 0}</p>
               <p><strong>Va chạm:</strong> {simulation.result.collisionCount}</p>
               <p><strong>Lệch làn:</strong> {simulation.result.laneDepartureCount}</p>
               <p><strong>Chướng ngại vật:</strong> {simulation.result.obstacleCount}</p>
               <p><strong>Biển báo:</strong> {simulation.result.trafficSignCount}</p>
+              <p><strong>{simulation.videoUrl}</strong></p>
               {simulation.videoUrl && (
                 <div className="mt-4">
                   <h4 className="text-lg font-semibold mb-2">Video kết quả</h4>

@@ -35,7 +35,7 @@ api.interceptors.response.use(
       try {
         const refreshResponse = await refreshToken();
         console.log('Refresh token response:', refreshResponse.data); // Debug
-        const newToken = refreshResponse.data.accessToken; // Sửa để khớp với response
+        const newToken = refreshResponse.data.accessToken || refreshResponse.data.token;
         localStorage.setItem('token', newToken);
         error.config.headers.Authorization = `Bearer ${newToken}`;
         return api(error.config);

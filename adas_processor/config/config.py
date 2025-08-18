@@ -8,9 +8,9 @@ YOLO_MODEL_PATH = str(BASE_DIR / "models" / "yolov8n.pt")
 TRAFFIC_SIGN_MODEL_PATH = str(BASE_DIR / "models" / "traffic_sign_model.h5")
 LANENET_MODEL_PATH = str(BASE_DIR / "models" / "lanenet_model.pth")
 
-# Frames directory (đồng bộ với backend Node.js)
-FRAMES_DIR = str(BASE_DIR.parent / "server" / "Uploads" / "frames")
-VIDEOS_DIR = str(BASE_DIR.parent / "server" / "Uploads" / "videos")
+# Frames and videos directory (đồng bộ với backend Node.js)
+FRAMES_DIR = str(BASE_DIR.parent / "server" / "Processed" / "frames")  # Thay đổi thành Processed/frames
+VIDEOS_DIR = str(BASE_DIR.parent / "server" / "Processed" / "videos")  # Thay đổi thành Processed/videos
 
 # ADAS parameters
 FRAME_INTERVAL = 0.5  # Save sensor data every 0.5s
