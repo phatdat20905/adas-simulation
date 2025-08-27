@@ -5,7 +5,7 @@ BASE_DIR = Path(__file__).parent.parent
 
 # Model paths
 YOLO_MODEL_PATH = str(BASE_DIR / "models" / "yolov8n.pt")
-TRAFFIC_SIGN_MODEL_PATH = str(BASE_DIR / "models" / "traffic_sign_model.h5")
+TRAFFIC_SIGN_MODEL_PATH = str(BASE_DIR / "models" / "best.pt")
 LANENET_MODEL_PATH = str(BASE_DIR / "models" / "lanenet_model.pth")
 
 # Frames and videos directory (đồng bộ với backend Node.js)
