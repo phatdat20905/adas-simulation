@@ -1,13 +1,13 @@
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
-  username: {
+  fullName: {
     type: String,
-    required: [true, 'Tên người dùng là bắt buộc'],
+    required: [true, 'Họ và tên là bắt buộc'],
     unique: true,
     trim: true,
-    minlength: [3, 'Tên người dùng phải có ít nhất 3 ký tự'],
-    maxlength: [30, 'Tên người dùng không được vượt quá 30 ký tự'],
+    minlength: [3, 'Họ và tên phải có ít nhất 3 ký tự'],
+    maxlength: [30, 'Họ và tên không được vượt quá 30 ký tự'],
   },
   email: {
     type: String,
@@ -30,10 +30,25 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Mật khẩu là bắt buộc'],
     minlength: [6, 'Mật khẩu phải có ít nhất 6 ký tự'],
   },
+  address: {
+    type: String,
+    trim: true,
+    maxlength: [200, 'Địa chỉ không được vượt quá 200 ký tự']
+  },
+  image: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  active: {
+    type: Boolean,
+    default: true,
+    required: true
+  },
   refreshToken: {
     type: String,
     default: null,
-    index: true, // Tăng tốc truy vấn refresh token
+    index: true,
   },
   role: {
     type: String,

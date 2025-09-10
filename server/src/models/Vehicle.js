@@ -6,7 +6,7 @@ const vehicleSchema = new mongoose.Schema({
     required: [true, 'Biển số là bắt buộc'],
     unique: true,
     trim: true,
-    match: [/^\d{2}-[A-Z]{1,2}\d\s\d{3}\.\d{2}$/, 'Biển số không đúng định dạng (e.g., 29-H1 123.45)'],
+    match: [/^[0-9A-Z.-]{5,15}$/, 'Biển số không đúng định dạng'],
   },
   brand: {
     type: String,
@@ -59,6 +59,9 @@ const vehicleSchema = new mongoose.Schema({
 
 vehicleSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
+  // normalize dữ liệu
+  if (this.brand) this.brand = this.brand.charAt(0).toUpperCase() + this.brand.slice(1);
+  if (this.color) this.color = this.color.toLowerCase();
   next();
 });
 

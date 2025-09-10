@@ -7,30 +7,31 @@ import fs from 'fs/promises';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+const allowedFileTypes = ['.jpeg', '.jpg', '.png', '.mp4'];
+
 // Multer storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const dest = file.mimetype.startsWith('video') ? join(__dirname, '../../Uploads/videos') : join(__dirname, '../../Uploads/images');
-    cb(null, dest);
+    const folder = file.mimetype.startsWith('video') ? 'videos' : 'images';
+    cb(null, join(__dirname, `../../Uploads/${folder}`));
   },
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
+    // Làm sạch tên file tránh ký tự lạ
+    const safeName = file.originalname.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '');
+    cb(null, `${Date.now()}-${safeName}`);
   },
 });
 
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|mp4/;
-    const extnameValid = filetypes.test(extname(file.originalname).toLowerCase());
-    const mimetypeValid = filetypes.test(file.mimetype);
-    if (extnameValid && mimetypeValid) {
+    const ext = extname(file.originalname).toLowerCase();
+    if (allowedFileTypes.includes(ext)) {
       return cb(null, true);
-    } else {
-      cb(new Error('Images (jpeg, jpg, png) or videos (mp4) only!'));
     }
+    cb(new Error('Only jpeg, jpg, png, mp4 files are allowed!'));
   },
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
+  limits: { fileSize: 100 * 1024 * 1024 }, // vẫn để 100MB chung, có thể tách riêng nếu cần
 }).single('file');
 
 const uploadFile = async (req, res) => {
@@ -46,7 +47,11 @@ const uploadFile = async (req, res) => {
     }
 
     try {
-      const simulation = await uploadService.uploadFile({ file: req.file, vehicleId: req.body.vehicleId, userId: req.user.id });
+      const simulation = await uploadService.uploadFile({
+        file: req.file,
+        vehicleId: req.body.vehicleId,
+        userId: req.user.id,
+      });
       res.status(201).json({
         success: true,
         message: 'File uploaded and simulation created',
@@ -54,8 +59,8 @@ const uploadFile = async (req, res) => {
       });
     } catch (error) {
       console.error('Upload error:', error);
-      if (req.file) {
-        await fs.unlink(join(__dirname, '../../Uploads/videos/', req.file.filename)).catch((err) => console.error('Failed to delete file:', err));
+      if (req.file?.path) {
+        await fs.unlink(req.file.path).catch((err) => console.error('Failed to delete file:', err));
       }
       res.status(400).json({ success: false, message: `Failed to save simulation: ${error.message}` });
     }

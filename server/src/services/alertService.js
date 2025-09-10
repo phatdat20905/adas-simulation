@@ -13,6 +13,7 @@ const createAlert = async ({ type, description, severity, simulationId, vehicleI
   if (sensorDataId && !(await SensorData.exists({ _id: sensorDataId, userId }))) {
     throw new Error('Invalid sensor data');
   }
+
   const alert = new Alert({ type, description, severity, simulationId, vehicleId, sensorDataId, userId });
   await alert.save();
   return alert;
@@ -20,9 +21,16 @@ const createAlert = async ({ type, description, severity, simulationId, vehicleI
 
 const getAlerts = async (userId, page, limit) => {
   const skip = (page - 1) * limit;
-  const alerts = await Alert.find({ userId }).skip(skip).limit(limit).lean();
-  const total = await Alert.countDocuments({ userId });
-  return { alerts: alerts || [], totalPages: Math.ceil(total / limit) || 1 };
+  const [alerts, total] = await Promise.all([
+    Alert.find({ userId }).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Alert.countDocuments({ userId }),
+  ]);
+
+  return {
+    alerts: alerts || [],
+    totalItems: total,
+    totalPages: Math.ceil(total / limit) || 1,
+  };
 };
 
 const updateAlert = async (alertId, userId, updates) => {
@@ -31,6 +39,7 @@ const updateAlert = async (alertId, userId, updates) => {
     { $set: updates },
     { new: true, runValidators: true }
   ).lean();
+
   if (!alert) {
     throw new Error('Alert not found or unauthorized');
   }

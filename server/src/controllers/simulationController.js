@@ -1,16 +1,14 @@
 import * as simulationService from '../services/simulationService.js';
 import { processADAS } from '../services/adasService.js';
-import { emitAlert } from '../socket.js';
+import { emitAlert, getIo } from '../utils/socket.js';
 import Simulation from '../models/Simulation.js';
 import Alert from '../models/Alert.js';
 import SensorData from '../models/SensorData.js';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
-
-import { io } from '../server.js'; // Đảm bảo đường dẫn đúng với cấu trúc dự án
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
 
 const createSimulation = async (req, res) => {
   try {
@@ -28,7 +26,6 @@ const createSimulation = async (req, res) => {
 
 const getSimulations = async (req, res) => {
   try {
-    console.log('getSimulations called with userId:', req.user.id, 'query:', req.query);
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const simulations = await simulationService.getSimulations(req.user.id, page, limit, req.user.role);
@@ -51,10 +48,6 @@ const getSimulationById = async (req, res) => {
 
 const updateSimulation = async (req, res) => {
   try {
-    const { filename, filepath, fileType, status, result } = req.body;
-    if (!filename && !filepath && !fileType && !status && !result) {
-      return res.status(400).json({ success: false, message: 'At least one field is required' });
-    }
     const simulation = await simulationService.updateSimulation(req.params.id, req.user.id, req.body, req.user.role);
     res.status(200).json({ success: true, data: simulation });
   } catch (error) {
@@ -73,39 +66,45 @@ const deleteSimulation = async (req, res) => {
   }
 };
 
+const allowedLaneStatuses = ['within', 'departing', 'crossed', 'lost'];
+
 const simulateADAS = async (req, res) => {
   const { simulationId } = req.body;
+  const io = getIo();
 
   if (!simulationId) {
     return res.status(400).json({ success: false, message: 'Simulation ID is required' });
   }
 
   try {
+    // 🔹 Tìm simulation
     const simulation = await Simulation.findById(simulationId);
     if (!simulation || (req.user.role !== 'admin' && simulation.userId.toString() !== req.user.id)) {
       return res.status(404).json({ success: false, message: 'Simulation not found or unauthorized' });
     }
 
-    const absoluteFilepath = join(__dirname, '../../', simulation.filepath);
-    console.log('Simulate ADAS filepath:', absoluteFilepath);
+    console.log('🚀 Starting ADAS simulation:', simulation.filepath);
+
+    // 🔹 Gọi Python service
     const results = await processADAS(
       simulation.filepath,
       simulation.vehicleId.toString(),
       simulationId,
       simulation.userId.toString()
-    ).catch((error) => {
-      console.error('ADAS processing error:', error);
-      throw new Error(`ADAS processing failed: ${error.message}`);
-    });
+    );
 
-    // Chuyển đổi camera_frame_url thành URL đầy đủ nếu cần
+
+    // 🔹 Normalize frame URL
     if (results.sensorData) {
-      results.sensorData = results.sensorData.map(data => ({
+      results.sensorData = results.sensorData.map((data) => ({
         ...data,
-        camera_frame_url: data.camera_frame_url ? `http://localhost:5000${data.camera_frame_url}` : null,
+        camera_frame_url: data.camera_frame_url
+          ? `/Processed/frames/${data.camera_frame_url.split('/').pop()}`
+          : null,
       }));
     }
 
+    // 🔹 Update simulation info
     simulation.result = results.summary || {
       totalAlerts: 0,
       collisionCount: 0,
@@ -118,59 +117,89 @@ const simulateADAS = async (req, res) => {
     simulation.videoUrl = results.videoUrl || null;
     await simulation.save();
 
-    if (results.sensorData && results.sensorData.length) {
+    // 🔹 Insert SensorData (cho phép speed âm hoặc null, thêm TTC/warn/trackId/frameIndex)
+    if (results.sensorData?.length) {
       const sensorDataDocs = results.sensorData.map((data) => ({
         vehicleId: data.vehicleId,
-        simulationId: data.simulationId,
+        simulationId,
         userId: data.userId,
         timestamp: new Date(data.timestamp),
-        speed: data.speed,
-        distance_to_object: data.distance_to_object,
-        lane_status: data.lane_status,
-        obstacle_detected: data.obstacle_detected,
-        camera_frame_url: data.camera_frame_url,
+        speed: typeof data.speed === 'number' ? data.speed : null,  // giữ null hoặc âm
+        distance_to_object:
+          typeof data.distance_to_object === 'number' ? data.distance_to_object : null,
+        lane_status: allowedLaneStatuses.includes(data.lane_status)
+          ? data.lane_status
+          : 'within',
+        obstacle_detected: !!data.obstacle_detected,
+        camera_frame_url: data.camera_frame_url || null,
+
+        // 🔹 các field mới từ Python
+        ttc: typeof data.ttc === 'number' ? data.ttc : null,
+        warn: !!data.warn,
+        trackId: typeof data.track_id === 'number' ? data.track_id : null,
+        frameIndex: typeof data.frame_index === 'number' ? data.frame_index : null,
       }));
-      await SensorData.insertMany(sensorDataDocs);
+
+      try {
+        await SensorData.insertMany(sensorDataDocs, { ordered: false });
+      } catch (insertErr) {
+        console.error('⚠️ Some SensorData documents failed to insert:', insertErr.message);
+      }
     }
 
-    if (results.alerts && results.alerts.length) {
-      const savedAlerts = await Alert.insertMany(
-        results.alerts.map((alert) => ({
-          ...alert,
-          userId: simulation.userId,
-          vehicleId: simulation.vehicleId,
-          simulationId,
-        }))
-      );
+    // 🔹 Insert Alerts (gắn đúng sensorData theo trackId)
+    if (results.alerts?.length) {
+      const alertDocs = results.alerts.map((alert) => ({
+        ...alert,
+        userId: simulation.userId,
+        vehicleId: simulation.vehicleId,
+        simulationId,
+      }));
 
+      let savedAlerts = [];
+      try {
+        savedAlerts = await Alert.insertMany(alertDocs, { ordered: false });
+      } catch (insertErr) {
+        console.error('⚠️ Some Alerts failed to insert:', insertErr.message);
+      }
+
+      // Emit alerts qua socket
       savedAlerts.forEach((alert) => {
         emitAlert(io, simulation.userId.toString(), alert);
       });
 
-      for (let i = 0; i < savedAlerts.length && i < results.sensorData?.length; i++) {
-        const sensorData = await SensorData.findOne({
-          simulationId,
-          timestamp: new Date(results.sensorData[i].timestamp),
-        });
-        if (sensorData) {
-          await Alert.findByIdAndUpdate(savedAlerts[i]._id, { sensorDataId: sensorData._id });
+      // Gắn sensorDataId theo trackId gần nhất
+      for (let alert of savedAlerts) {
+        if (alert.track_id != null) {
+          const nearestSensor = await SensorData.findOne({
+            simulationId,
+            trackId: alert.track_id,
+          }).sort({ frameIndex: -1 });
+
+          if (nearestSensor) {
+            await Alert.findByIdAndUpdate(alert._id, { sensorDataId: nearestSensor._id });
+          }
         }
       }
     }
 
+    // 🔹 Notify frontend
     io.to(simulation.userId.toString()).emit('simulationStatus', {
       simulationId,
       status: simulation.status,
       videoUrl: simulation.videoUrl,
+      result: simulation.result,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: 'Simulation completed',
       data: { ...simulation.toObject(), videoUrl: simulation.videoUrl },
     });
   } catch (error) {
-    console.error('Simulate ADAS error:', error);
+    console.error('❌ Simulate ADAS error:', error);
+
+    // Mark simulation as failed
     const simulation = await Simulation.findById(simulationId);
     if (simulation) {
       simulation.status = 'failed';
@@ -180,8 +209,24 @@ const simulateADAS = async (req, res) => {
         status: 'failed',
       });
     }
-    res.status(500).json({ success: false, message: `Simulation failed: ${error.message}` });
+
+    return res.status(500).json({
+      success: false,
+      message: `Simulation failed: ${error.message}`,
+    });
   }
 };
 
-export { createSimulation, getSimulations, getSimulationById, updateSimulation, deleteSimulation, simulateADAS };
+const streamSimulationVideo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const range = req.headers.range;
+    await simulationService.getSimulationVideoStream(id, range, res);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+
+export { createSimulation, getSimulations, getSimulationById, updateSimulation, deleteSimulation, simulateADAS, streamSimulationVideo };

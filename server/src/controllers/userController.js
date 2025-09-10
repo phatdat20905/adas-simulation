@@ -2,11 +2,11 @@ import * as userService from '../services/userService.js';
 
 const register = async (req, res) => {
   try {
-    const { username, email, phone, password, role } = req.body;
-    if (!username || !email || !phone || !password) {
-      return res.status(400).json({ success: false, message: 'All fields are required' });
+    const { fullName, email, phone, password, role, address, image, active } = req.body;
+    if (!fullName || !email || !phone || !password) {
+      return res.status(400).json({ success: false, message: 'All required fields are required' });
     }
-    const result = await userService.registerUser({ username, email, phone, password, role });
+    const result = await userService.registerUser({ fullName, email, phone, password, role, address, image, active });
     res.status(201).json({ success: true, message: 'User registered', ...result });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -39,10 +39,36 @@ const refresh = async (req, res) => {
   }
 };
 
+// const getUsers = async (req, res) => {
+//   try {
+//     const users = await userService.getUsers();
+//     res.status(200).json({ success: true, data: users });
+//   } catch (error) {
+//     res.status(500).json({ success: false, message: error.message });
+//   }
+// };
+
 const getUsers = async (req, res) => {
   try {
-    const users = await userService.getUsers();
-    res.status(200).json({ success: true, data: users });
+    const {
+      page = 1,
+      limit = 10,
+      search = '',
+      role = '',
+      active = '',
+      sort = '-createdAt',
+    } = req.query;
+
+    const result = await userService.getUsers({
+      page: Number(page),
+      limit: Number(limit),
+      search: String(search),
+      role: role ? String(role) : '',
+      active: active !== '' ? active === 'true' : '',
+      sort: String(sort),
+    });
+
+    res.status(200).json({ success: true, ...result });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -59,11 +85,11 @@ const getCurrentUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
   try {
-    const { username, email, phone, password } = req.body;
-    if (!username && !email && !phone && !password) {
+    const { fullName, email, phone, password, address, image, active } = req.body;
+    if (!fullName && !email && !phone && !password && !address && !image && active === undefined) {
       return res.status(400).json({ success: false, message: 'At least one field is required' });
     }
-    const user = await userService.updateUser(req.user.id, { username, email, phone, password });
+    const user = await userService.updateUser(req.user.id, { fullName, email, phone, password, address, image, active });
     res.status(200).json({ success: true, data: user });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
@@ -88,4 +114,29 @@ const logout = async (req, res) => {
   }
 };
 
-export { register, login, refresh, getUsers, getCurrentUser, updateUser, deleteUser, logout };
+const updateUserByAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fullName, email, phone, password, address, image, active, role } = req.body;
+
+    if (!fullName && !email && !phone && !password && !address && !image && active === undefined && !role) {
+      return res.status(400).json({ success: false, message: 'At least one field is required' });
+    }
+    const user = await userService.updateUserByAdmin(id, { fullName, email, phone, password, address, image, active, role });
+    res.status(200).json({ success: true, data: user });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const deleteUserByAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await userService.deleteUserByAdmin(id);
+    res.status(200).json({ success: true, ...result });
+  } catch (error) {
+    res.status(404).json({ success: false, message: error.message });
+  }
+};
+
+export { register, login, refresh, getUsers, getCurrentUser, updateUser, deleteUser, logout, updateUserByAdmin, deleteUserByAdmin };

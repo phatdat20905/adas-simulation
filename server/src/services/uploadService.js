@@ -5,13 +5,18 @@ const uploadFile = async ({ file, vehicleId, userId }) => {
   if (!file || !vehicleId) {
     throw new Error('File and vehicle ID are required');
   }
-  if (!(await Vehicle.exists({ _id: vehicleId, owner: userId }))) {
+
+  const isValidVehicle = await Vehicle.exists({ _id: vehicleId, owner: userId });
+  if (!isValidVehicle) {
     throw new Error('Invalid vehicle or unauthorized');
   }
 
+  // Xác định subDir đúng cho filepath
+  const subDir = file.mimetype.startsWith('video') ? 'videos' : 'images';
+
   const simulation = await createSimulation({
     filename: file.filename,
-    filepath: `/Uploads/videos/${file.filename}`, // Lưu vào Uploads/videos
+    filepath: `/Uploads/${subDir}/${file.filename}`,
     fileType: file.mimetype.startsWith('video') ? 'video' : 'image',
     vehicleId,
     userId,

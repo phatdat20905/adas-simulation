@@ -1,13 +1,52 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ADAS</title>
   </head>
-  <body>
+  <body class="dark:bg-gray-900">
     <div id="root"></div>
+    <!-- Messenger Plugin chat Code -->
+    <div id="fb-root"></div>
+    <div id="fb-customer-chat" class="fb-customerchat"></div>
+
+    <script>
+      var chatbox = document.getElementById('fb-customer-chat');
+      chatbox.setAttribute('page_id', '745647871970454');  // Thay bằng Page ID của bạn
+      chatbox.setAttribute('attribution', 'biz_inbox');
+    </script>
+
+    <script>
+      window.fbAsyncInit = function () {
+        FB.init({
+          xfbml: true,
+          version: 'v18.0',
+        });
+      };
+
+      (function (d, s, id) {
+        var js,
+          fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) return;
+        js = d.createElement(s);
+        js.id = id;
+        js.src = 'https://connect.facebook.net/vi_VN/sdk/xfbml.customerchat.js';
+        fjs.parentNode.insertBefore(js, fjs);
+      })(document, 'script', 'facebook-jssdk');
+    </script>
+
+    <!-- Zalo Chat Widget -->
+    <div
+      class="zalo-chat-widget"
+      data-oaid="2478592874069784034"
+      data-welcome-message="Xin chào! ADAS có thể giúp gì cho bạn?"
+      data-autopopup="0"
+      data-width="350"
+      data-height="420"
+    ></div>
+    <script src="https://sp.zalo.me/plugins/sdk.js"></script>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

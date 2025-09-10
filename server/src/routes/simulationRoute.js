@@ -1,5 +1,5 @@
 import express from 'express';
-import { createSimulation, getSimulations, getSimulationById, updateSimulation, deleteSimulation, simulateADAS } from '../controllers/simulationController.js';
+import { createSimulation, getSimulations, getSimulationById, updateSimulation, deleteSimulation, simulateADAS, streamSimulationVideo } from '../controllers/simulationController.js';
 import auth from '../middleware/auth.js';
 
 const router = express.Router();
@@ -10,5 +10,6 @@ router.get('/:id', auth(['user', 'admin']), getSimulationById);
 router.put('/:id', auth(['user', 'admin']), updateSimulation);
 router.delete('/:id', auth(['user', 'admin']), deleteSimulation);
 router.post('/simulate', auth(['user', 'admin']), simulateADAS);
+router.get("/:id/video", streamSimulationVideo);
 
 export default router;
