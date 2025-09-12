@@ -1,12 +1,14 @@
-// routes/supportRoutes.js
 import express from "express";
 import { createSupport, getSupports, updateSupport, deleteSupport } from "../controllers/supportController.js";
 import auth from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.post("/", createSupport); // khách hàng gửi không cần auth
-router.get("/", auth(["admin"]), getSupports); // admin quản lý
+// Khách hàng gửi yêu cầu không cần đăng nhập
+router.post("/", createSupport);
+
+// Admin quản lý
+router.get("/", auth(["admin"]), getSupports);
 router.put("/:id", auth(["admin"]), updateSupport);
 router.delete("/:id", auth(["admin"]), deleteSupport);
 

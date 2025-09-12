@@ -1,4 +1,3 @@
-// src/pages/SupportPage.tsx
 import { Mail, Phone, MessageCircle, HelpCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -27,6 +26,7 @@ export default function SupportPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    subject: "",   // ✅ thêm subject
     message: "",
   });
   const [loading, setLoading] = useState(false);
@@ -35,16 +35,16 @@ export default function SupportPage() {
   const toggleChat = () => {
     setChatVisible((prev) => !prev);
 
-    // Messenger widget
     const fbChat = document.getElementById("fb-customer-chat");
     if (fbChat) fbChat.style.display = chatVisible ? "none" : "block";
 
-    // Zalo widget
     const zaloChat = document.querySelector<HTMLElement>(".zalo-chat-widget");
     if (zaloChat) zaloChat.style.display = chatVisible ? "none" : "block";
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -54,10 +54,11 @@ export default function SupportPage() {
     setStatus(null);
 
     try {
+      // 👉 Gửi đủ 4 field
       const res = await createSupport(formData);
       if (res.data.success) {
         setStatus("success");
-        setFormData({ name: "", email: "", message: "" });
+        setFormData({ name: "", email: "", subject: "", message: "" });
       } else {
         setStatus("error");
       }
@@ -155,6 +156,16 @@ export default function SupportPage() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="Email"
+                className="w-full p-3 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
+                required
+              />
+              {/* ✅ Thêm input Tiêu đề */}
+              <input
+                type="text"
+                name="subject"
+                value={formData.subject}
+                onChange={handleChange}
+                placeholder="Tiêu đề"
                 className="w-full p-3 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800"
                 required
               />

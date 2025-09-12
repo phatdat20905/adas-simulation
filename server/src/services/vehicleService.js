@@ -1,4 +1,8 @@
 import Vehicle from '../models/Vehicle.js';
+import Simulation from '../models/Simulation.js';
+import Alert from '../models/Alert.js';
+import SensorData from '../models/SensorData.js';
+import { deleteFileSafe } from './simulationService.js'; // đã có sẵn hàm này
 
 // Create a new vehicle
 const createVehicle = async ({
@@ -52,7 +56,12 @@ const getVehicles = async ({
     : { createdAt: -1 };
 
   const [vehicles, total] = await Promise.all([
-    Vehicle.find(query).sort(sortOption).skip(skip).limit(limit).lean(),
+    Vehicle.find(query)
+      .populate('owner', 'fullName') // ✅ thêm dòng này
+      .sort(sortOption)
+      .skip(skip)
+      .limit(limit)
+      .lean(),
     Vehicle.countDocuments(query),
   ]);
 
@@ -64,6 +73,7 @@ const getVehicles = async ({
     limit,
   };
 };
+
 
 // List all vehicles of a user (include inactive)
 const getUserVehicles = async ({
@@ -127,17 +137,35 @@ const updateVehicle = async (id, userId, role, updates) => {
   return vehicle;
 };
 
-// Soft delete
-const deleteVehicle = async (id, userId, role) => {
-  const query = role === 'admin' ? { _id: id } : { _id: id, owner: userId };
-  const vehicle = await Vehicle.findOneAndUpdate(
-    query,
-    { $set: { status: 'inactive', updatedAt: Date.now() } },
-    { new: true }
-  );
-  if (!vehicle) throw new Error('Vehicle not found or unauthorized');
-  return { message: 'Vehicle deactivated' };
+const deleteVehicle = async (vehicleId, userId, role) => {
+  // 1. Nếu không phải admin chỉ được xóa xe của chính mình
+  const query = role === 'admin' ? { _id: vehicleId } : { _id: vehicleId, owner: userId };
+
+  // 2. Tìm và xóa vehicle
+  const vehicle = await Vehicle.findOneAndDelete(query);
+  if (!vehicle) {
+    throw new Error('Vehicle not found or unauthorized');
+  }
+
+  // 3. Lấy danh sách các simulation liên quan để xóa file
+  const simulations = await Simulation.find({ vehicleId: vehicle._id });
+
+  // 4. Xóa tất cả dữ liệu liên quan
+  await Promise.all([
+    SensorData.deleteMany({ vehicleId: vehicle._id }),
+    Alert.deleteMany({ vehicleId: vehicle._id }),
+    Simulation.deleteMany({ vehicleId: vehicle._id }),
+  ]);
+
+  // 5. Xóa file của từng simulation (nếu có)
+  for (const sim of simulations) {
+    if (sim.filepath) await deleteFileSafe(sim.filepath);
+    if (sim.videoUrl) await deleteFileSafe(sim.videoUrl);
+  }
+
+  return { message: 'Vehicle and all related data/files deleted' };
 };
+
 
 export {
   createVehicle,

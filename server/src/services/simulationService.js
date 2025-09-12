@@ -59,7 +59,7 @@ const updateSimulation = async (simulationId, userId, updates, role) => {
 /**
  * Xóa file an toàn (không throw nếu file không tồn tại).
  */
-const deleteFileSafe = async (relativePath) => {
+export const deleteFileSafe = async (relativePath) => {
   if (!relativePath) return;
   try {
     // chuẩn hóa thành absolute path

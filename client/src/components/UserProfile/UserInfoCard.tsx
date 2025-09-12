@@ -5,11 +5,12 @@ import Input from "../form/input/InputField";
 import Label from "../form/Label";
 import { getCurrentUser, updateUser } from "../../services/api";
 import type { User } from "../../types";
+import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
 
 export default function UserInfoCard() {
   const { isOpen, openModal, closeModal } = useModal();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, updateUser: updateUserContext } = useAuth();
   const [formData, setFormData] = useState<Partial<User>>({});
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
@@ -18,7 +19,7 @@ export default function UserInfoCard() {
       try {
         const res = await getCurrentUser();
         if (res.data.success) {
-          setUser(res.data.data ?? null);
+          updateUserContext(res.data.data ?? {});
           setFormData(res.data.data ?? {});
         }
       } catch (err) {
@@ -27,17 +28,18 @@ export default function UserInfoCard() {
       }
     }
     fetchUser();
-  }, []);
+  }, [updateUserContext]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSave = async () => {
+    if (!user) return;
     try {
-      const res = await updateUser(formData);
+      const res = await updateUser(user._id, formData);
       if (res.data.success) {
-        setUser(res.data.data ?? null);
+        updateUserContext(res.data.data ?? {});
         toast.success("Cập nhật thông tin thành công!");
         closeModal();
       } else {
@@ -50,7 +52,8 @@ export default function UserInfoCard() {
   };
 
   const handleUploadAvatar = (file: File) => {
-    // Giới hạn dung lượng <= 2MB
+    if (!user) return;
+
     if (file.size > 2 * 1024 * 1024) {
       toast.error("Ảnh không được vượt quá 2MB!");
       return;
@@ -62,9 +65,9 @@ export default function UserInfoCard() {
         const base64String = reader.result as string;
         setPreviewImage(base64String);
 
-        const res = await updateUser({ image: base64String });
+        const res = await updateUser(user._id, { image: base64String });
         if (res.data.success) {
-          setUser(res.data.data ?? null);
+          updateUserContext(res.data.data ?? {});
           toast.success("Ảnh đại diện đã được cập nhật!");
         } else {
           toast.error(res.data.message || "Cập nhật ảnh thất bại!");
@@ -82,11 +85,17 @@ export default function UserInfoCard() {
       {/* Avatar + Change photo */}
       <div className="flex items-center gap-6 mb-6">
         <div className="w-20 h-20 rounded-full overflow-hidden border border-gray-200 dark:border-gray-700">
-          <img
-            src={previewImage || user?.image || "/images/user/owner.jpg"}
-            alt="user"
-            className="w-full h-full object-cover"
-          />
+          {previewImage || user?.image ? (
+            <img
+              src={previewImage || user?.image}
+              alt="user"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-semibold">
+              {user?.fullName?.charAt(0) || "?"}
+            </div>
+          )}
         </div>
         <div>
           <input
@@ -101,16 +110,12 @@ export default function UserInfoCard() {
           />
           <button
             type="button"
-            onClick={() =>
-              document.getElementById("avatar-upload")?.click()
-            }
+            onClick={() => document.getElementById("avatar-upload")?.click()}
             className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
           >
             Change Photo
           </button>
-          <p className="text-xs text-gray-500 mt-1">
-            JPG, PNG hoặc GIF (tối đa 2MB)
-          </p>
+          <p className="text-xs text-gray-500 mt-1">JPG, PNG hoặc GIF (tối đa 2MB)</p>
         </div>
       </div>
 
@@ -118,27 +123,19 @@ export default function UserInfoCard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
         <div>
           <p className="text-xs text-gray-500">Full Name</p>
-          <p className="font-medium text-gray-800 dark:text-gray-200">
-            {user?.fullName || "N/A"}
-          </p>
+          <p className="font-medium text-gray-800 dark:text-gray-200">{user?.fullName || "N/A"}</p>
         </div>
         <div>
           <p className="text-xs text-gray-500">Email</p>
-          <p className="font-medium text-gray-800 dark:text-gray-200">
-            {user?.email || "N/A"}
-          </p>
+          <p className="font-medium text-gray-800 dark:text-gray-200">{user?.email || "N/A"}</p>
         </div>
         <div>
           <p className="text-xs text-gray-500">Phone</p>
-          <p className="font-medium text-gray-800 dark:text-gray-200">
-            {user?.phone || "N/A"}
-          </p>
+          <p className="font-medium text-gray-800 dark:text-gray-200">{user?.phone || "N/A"}</p>
         </div>
         <div>
           <p className="text-xs text-gray-500">Address</p>
-          <p className="font-medium text-gray-800 dark:text-gray-200">
-            {user?.address || "N/A"}
-          </p>
+          <p className="font-medium text-gray-800 dark:text-gray-200">{user?.address || "N/A"}</p>
         </div>
       </div>
 
@@ -156,64 +153,33 @@ export default function UserInfoCard() {
       {/* Modal chỉnh sửa */}
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-xl m-4">
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-6">
-          <h4 className="mb-4 text-xl font-semibold">
-            Edit Personal Information
-          </h4>
+          <h4 className="mb-4 text-xl font-semibold">Edit Personal Information</h4>
           <form className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="col-span-2 space-y-2">
               <Label>Full Name</Label>
-              <Input
-                name="fullName"
-                type="text"
-                value={formData.fullName || ""}
-                onChange={handleChange}
-              />
+              <Input name="fullName" type="text" value={formData.fullName || ""} onChange={handleChange} />
             </div>
             <div className="space-y-2">
               <Label>Email</Label>
-              <Input
-                name="email"
-                type="email"
-                value={formData.email || ""}
-                onChange={handleChange}
-              />
+              <Input name="email" type="email" value={formData.email || ""} onChange={handleChange} />
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>
-              <Input
-                name="phone"
-                type="text"
-                value={formData.phone || ""}
-                onChange={handleChange}
-              />
+              <Input name="phone" type="text" value={formData.phone || ""} onChange={handleChange} />
             </div>
             <div className="col-span-2 space-y-2">
               <Label>Address</Label>
-              <Input
-                name="address"
-                type="text"
-                value={formData.address || ""}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="col-span-2 flex justify-end gap-3 mt-4">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:opacity-90"
-              >
-                Save Changes
-              </button>
+              <Input name="address" type="text" value={formData.address || ""} onChange={handleChange} />
             </div>
           </form>
+          <div className="flex justify-end mt-6 gap-3">
+            <button onClick={closeModal} className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200">
+              Cancel
+            </button>
+            <button onClick={handleSave} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+              Save
+            </button>
+          </div>
         </div>
       </Modal>
     </div>

@@ -107,23 +107,48 @@ export interface ApiResponse<T> {
 }
 
 // =========================
-// Dashboard
+// Dashboard (User)
 // =========================
 export interface UserDashboard {
-  myVideos: number;
-  mySimulations: number;
-  myAlerts: number;
+  myVideos: number; // số lượng video upload
+  mySimulations: number; // số lượng simulation hoàn thành
+  myAlerts: number; // tổng số cảnh báo
+  alertsByType: {
+    collision?: number;
+    lane_departure?: number;
+    obstacle?: number;
+    traffic_sign?: number;
+    [key: string]: number; // fallback cho loại khác
+  };
+  trend7days: { _id: string; count: number }[]; // thống kê simulation 7 ngày gần đây
   recentSimulations: Simulation[];
 }
 
+// =========================
+// Dashboard (Admin)
+// =========================
 export interface AdminDashboard {
   totalUsers: number;
   totalVehicles: number;
   totalVideos: number;
   totalSimulations: number;
-  statusDistribution: { status: Simulation['status']; count: number }[];
+  statusDistribution: { status: Simulation["status"]; count: number }[];
+  alertsByType: {
+    collision?: number;
+    lane_departure?: number;
+    obstacle?: number;
+    traffic_sign?: number;
+    [key: string]: number;
+  };
+  topUsers: {
+    userId: string;
+    fullName: string;
+    simulations: number;
+  }[];
+  trend30days: { _id: string; count: number }[];
   recentSimulations: Simulation[];
 }
+
 
 // =========================
 // Support

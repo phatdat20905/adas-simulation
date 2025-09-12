@@ -133,7 +133,7 @@ const updateVehicle = async (req, res) => {
   }
 };
 
-// Delete (soft)
+
 const deleteVehicle = async (req, res) => {
   try {
     const result = await vehicleService.deleteVehicle(

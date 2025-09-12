@@ -81,8 +81,11 @@ export const refreshToken = (refreshToken?: string) =>
   });
 
 export const getCurrentUser = () => api.get<ApiResponse<User>>('/users/me');
-export const updateUser = (data: Partial<User>) => api.put<ApiResponse<User>>('/users/me', data);
-export const deleteUser = () => api.delete<ApiResponse<void>>('/users/me');
+export const updateUser = (id: string, data: Partial<User>) =>
+  api.put<ApiResponse<User>>(`/users/${id}`, data);
+
+export const deleteUser = (id: string) =>
+  api.delete<ApiResponse<{ message: string }>>(`/users/${id}`);
 export const logout = () => api.post<ApiResponse<void>>('/users/logout');
 
 // Admin user APIs
@@ -95,12 +98,6 @@ export const getUsersAdmin = (params?: {
   sort?: string;
 }) =>
   api.get<ApiResponse<PaginatedResponse<User>>>('/users', { params });
-
-export const updateUserById = (id: string, data: Partial<User>) =>
-  api.put<ApiResponse<User>>(`/users/${id}`, data);
-
-export const deleteUserById = (id: string) =>
-  api.delete<ApiResponse<{ message: string }>>(`/users/${id}`);
 
 // =========================
 // Vehicle APIs
@@ -233,18 +230,25 @@ export const getAdminDashboard = () =>
 export const createSupport = (data: {
   name: string;
   email: string;
+  subject: string;       // ✅ Bổ sung
   message: string;
-}) => api.post<ApiResponse<Support>>("/support/contact", data);
+}) => api.post<ApiResponse<Support>>("/support", data);
 
 // Admin lấy danh sách yêu cầu hỗ trợ
-export const getSupports = (params?: { page?: number; limit?: number }) =>
+export const getSupports = (params?: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: "pending" | "resolved";
+  sort?: string;
+}) =>
   api.get<ApiResponse<PaginatedResponse<Support>>>("/support", { params });
 
 export const updateSupport = (id: string, data: Partial<Support>) =>
-  api.put<ApiResponse<Support>>(`/supports/${id}`, data);
+  api.put<ApiResponse<Support>>(`/support/${id}`, data);
 
 export const deleteSupport = (id: string) =>
-  api.delete<ApiResponse<void>>(`/supports/${id}`);
+  api.delete<ApiResponse<void>>(`/support/${id}`);
 
 
 

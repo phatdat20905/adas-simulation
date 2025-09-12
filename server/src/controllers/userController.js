@@ -39,15 +39,6 @@ const refresh = async (req, res) => {
   }
 };
 
-// const getUsers = async (req, res) => {
-//   try {
-//     const users = await userService.getUsers();
-//     res.status(200).json({ success: true, data: users });
-//   } catch (error) {
-//     res.status(500).json({ success: false, message: error.message });
-//   }
-// };
-
 const getUsers = async (req, res) => {
   try {
     const {
@@ -85,23 +76,26 @@ const getCurrentUser = async (req, res) => {
 
 const updateUser = async (req, res) => {
   try {
-    const { fullName, email, phone, password, address, image, active } = req.body;
-    if (!fullName && !email && !phone && !password && !address && !image && active === undefined) {
-      return res.status(400).json({ success: false, message: 'At least one field is required' });
+    if (Object.keys(req.body).length === 0) {
+      return res.status(400).json({ success: false, message: "No fields provided" });
     }
-    const user = await userService.updateUser(req.user.id, { fullName, email, phone, password, address, image, active });
-    res.status(200).json({ success: true, data: user });
+
+    const user = await userService.updateUser(req.params.id, req.body);
+
+    return res.status(200).json({ success: true, data: user });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 
 const deleteUser = async (req, res) => {
   try {
-    const result = await userService.deleteUser(req.user.id);
-    res.status(200).json({ success: true, ...result });
+    const { hard } = req.query; // ?hard=true nếu muốn xóa hẳn
+    const result = await userService.deleteUser(req.params.id, hard === "true");
+
+    return res.status(200).json({ success: true, ...result });
   } catch (error) {
-    res.status(404).json({ success: false, message: error.message });
+    return res.status(404).json({ success: false, message: error.message });
   }
 };
 
@@ -114,29 +108,5 @@ const logout = async (req, res) => {
   }
 };
 
-const updateUserByAdmin = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { fullName, email, phone, password, address, image, active, role } = req.body;
 
-    if (!fullName && !email && !phone && !password && !address && !image && active === undefined && !role) {
-      return res.status(400).json({ success: false, message: 'At least one field is required' });
-    }
-    const user = await userService.updateUserByAdmin(id, { fullName, email, phone, password, address, image, active, role });
-    res.status(200).json({ success: true, data: user });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
-const deleteUserByAdmin = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await userService.deleteUserByAdmin(id);
-    res.status(200).json({ success: true, ...result });
-  } catch (error) {
-    res.status(404).json({ success: false, message: error.message });
-  }
-};
-
-export { register, login, refresh, getUsers, getCurrentUser, updateUser, deleteUser, logout, updateUserByAdmin, deleteUserByAdmin };
+export { register, login, refresh, getUsers, getCurrentUser, updateUser, deleteUser, logout };

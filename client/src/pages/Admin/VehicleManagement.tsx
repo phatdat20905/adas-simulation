@@ -1,4 +1,3 @@
-// components/admin/AdminVehiclePage.tsx
 import { useEffect, useState } from "react";
 import { useModal } from "../../hooks/useModal";
 import toast from "react-hot-toast";
@@ -137,12 +136,12 @@ export default function AdminVehiclePage() {
   return (
     <>
       <PageMeta title="Vehicle Management | Admin" description="Quản lý xe máy" />
-      <PageBreadcrumb pageTitle="Vehicle Management" />
+      <PageBreadcrumb pageTitle="Quản Lý Xe Máy" />
 
       <div className="p-6 border border-gray-200 rounded-2xl dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Vehicle Management</h2>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Quản Lý Xe Máy</h2>
             <p className="text-gray-600 dark:text-gray-400">Quản lý danh sách xe trong hệ thống</p>
           </div>
           <div className="flex items-center gap-3">
@@ -249,7 +248,7 @@ export default function AdminVehiclePage() {
                         {v.status}
                       </button>
                     </td>
-                    <td className="px-4 py-2">{v.owner}</td>
+                    <td className="px-4 py-2">{v.owner.fullName}</td>
                     <td className="px-4 py-2">{new Date(v.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-2 text-right space-x-2">
                       <button
@@ -281,7 +280,7 @@ export default function AdminVehiclePage() {
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mt-4">
           <div className="text-sm text-gray-700 dark:text-gray-300">
-            Trang <span className="font-medium">{page}</span> / {totalPages} — Tổng <span className="font-medium">{total}</span>
+            Trang <span className="font-medium">{page}</span> / {totalPages} — Mỗi trang
             <select
               value={limit}
               onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}

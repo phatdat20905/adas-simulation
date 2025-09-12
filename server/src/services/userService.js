@@ -100,37 +100,47 @@ const getCurrentUser = async (userId) => {
   return user;
 };
 
-const updateUser = async (userId, { fullName, email, phone, password, address, image, active }) => {
-  const updates = {};
-  if (fullName) updates.fullName = fullName;
-  if (email) updates.email = email;
-  if (phone) updates.phone = phone;
-  if (password) updates.password = await bcrypt.hash(password, 10);
-  if (address) updates.address = address;
-  if (image) updates.image = image;
-  if (active !== undefined) updates.active = active;
+const updateUser = async (userId, updates) => {
+  const allowedFields = ["fullName", "email", "phone", "password", "address", "image", "active", "role"];
+  const updateData = {};
+
+  for (const key of allowedFields) {
+    if (updates[key] !== undefined) {
+      updateData[key] =
+        key === "password" ? await bcrypt.hash(updates[key], 10) : updates[key];
+    }
+  }
 
   const user = await User.findByIdAndUpdate(
     userId,
-    { $set: updates },
+    { $set: { ...updateData, updatedAt: Date.now() } },
     { new: true, runValidators: true }
-  ).select('-password -refreshToken');
-  if (!user) {
-    throw new Error('User not found');
-  }
+  ).select("-password -refreshToken");
+
+  if (!user) throw new Error("User not found");
+
   return user;
 };
 
-const deleteUser = async (userId) => {
+/**
+ * Delete user by ID (soft delete mặc định, hard delete nếu cần)
+ */
+const deleteUser = async (userId, hard = false) => {
+  if (hard) {
+    const user = await User.findByIdAndDelete(userId);
+    if (!user) throw new Error("User not found");
+    return { message: "User permanently deleted" };
+  }
+
   const user = await User.findByIdAndUpdate(
     userId,
-    { $set: { refreshToken: null, active: false, updatedAt: Date.now() } },
+    { $set: { active: false, refreshToken: null, updatedAt: Date.now() } },
     { new: true }
-  );
-  if (!user) {
-    throw new Error('User not found');
-  }
-  return { message: 'User account deactivated' };
+  ).select("-password -refreshToken");
+
+  if (!user) throw new Error("User not found");
+
+  return { message: "User account deactivated" };
 };
 
 const logoutUser = async (userId) => {
@@ -145,34 +155,5 @@ const logoutUser = async (userId) => {
   return { message: 'Logged out successfully' };
 };
 
-const updateUserByAdmin = async (userId, { fullName, email, phone, password, address, image, active, role }) => {
-  const updates = {};
-  if (fullName) updates.fullName = fullName;
-  if (email) updates.email = email;
-  if (phone) updates.phone = phone;
-  if (password) updates.password = await bcrypt.hash(password, 10);
-  if (address) updates.address = address;
-  if (image) updates.image = image;
-  if (active !== undefined) updates.active = active;
-  if (role) updates.role = role;
 
-  const user = await User.findByIdAndUpdate(
-    userId,
-    { $set: updates },
-    { new: true, runValidators: true }
-  ).select('-password -refreshToken');
-  if (!user) throw new Error('User not found');
-  return user;
-};
-
-const deleteUserByAdmin = async (userId) => {
-  const user = await User.findByIdAndUpdate(
-    userId,
-    { $set: { refreshToken: null, active: false, updatedAt: Date.now() } },
-    { new: true }
-  );
-  if (!user) throw new Error('User not found');
-  return { message: 'User account deactivated by admin' };
-};
-
-export { registerUser, loginUser, refreshToken, getUsers, getCurrentUser, updateUser, deleteUser, logoutUser, updateUserByAdmin, deleteUserByAdmin };
+export { registerUser, loginUser, refreshToken, getUsers, getCurrentUser, updateUser, deleteUser, logoutUser };

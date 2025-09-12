@@ -157,8 +157,6 @@ export default function VehicleFormModal({
               >
                 <option value="petrol">Xăng</option>
                 <option value="electric">Điện</option>
-                <option value="hybrid">Hybrid</option>
-                <option value="diesel">Dầu</option>
               </select>
             </div>
           </div>

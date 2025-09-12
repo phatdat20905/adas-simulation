@@ -1,17 +1,18 @@
-// services/supportService.js
 import Support from "../models/Support.js";
 import nodemailer from "nodemailer";
 
+/**
+ * Tạo yêu cầu hỗ trợ mới và gửi email thông báo cho admin
+ */
 export const createSupportRequest = async ({ name, email, subject, message }) => {
   if (!name || !email || !subject || !message) {
     throw new Error("Missing required fields");
   }
 
-  // Lưu DB
-  const support = new Support({ name, email, subject, message });
-  await support.save();
+  // Lưu vào DB
+  const support = await Support.create({ name, email, subject, message });
 
-  // Gửi email cho admin
+  // Gửi email thông báo cho admin
   const transporter = nodemailer.createTransport({
     service: "Gmail",
     auth: {
@@ -24,19 +25,31 @@ export const createSupportRequest = async ({ name, email, subject, message }) =>
     from: `"ADAS Support" <${process.env.ADMIN_EMAIL}>`,
     to: process.env.ADMIN_EMAIL,
     subject: "📩 Yêu cầu hỗ trợ mới từ khách hàng",
-    text: `Khách hàng: ${name}\nEmail: ${email}\nTiêu đề: ${subject}\nNội dung: ${message}`,
+    text: `Khách hàng: ${name}
+Email: ${email}
+Tiêu đề: ${subject}
+Nội dung: ${message}`,
   });
 
   return support;
 };
 
-export const getSupportRequests = async ({ page = 1, limit = 10, search, status, sort = "-createdAt" }) => {
+/**
+ * Lấy danh sách yêu cầu hỗ trợ (có phân trang, tìm kiếm, lọc trạng thái, sắp xếp)
+ */
+export const getSupportRequests = async ({
+  page = 1,
+  limit = 10,
+  search,
+  status,
+  sort = "-createdAt",
+}) => {
   const query = {};
   if (status) query.status = status;
   if (search) {
     query.$or = [
-      { name: { $regex: search, $options: "i" } },
-      { email: { $regex: search, $options: "i" } },
+      { name:    { $regex: search, $options: "i" } },
+      { email:   { $regex: search, $options: "i" } },
       { subject: { $regex: search, $options: "i" } },
       { message: { $regex: search, $options: "i" } },
     ];
@@ -68,5 +81,4 @@ export const updateSupportRequest = async (id, update) => {
 export const deleteSupportRequest = async (id) => {
   const support = await Support.findByIdAndDelete(id);
   if (!support) throw new Error("Support not found");
-  return;
 };

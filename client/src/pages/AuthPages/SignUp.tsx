@@ -6,8 +6,8 @@ export default function SignUp() {
   return (
     <>
       <PageMeta
-        title=" SignUp Dashboard | ADAS - Next.js Admin Dashboard Template"
-        description="This is  SignUp Tables Dashboard page for ADAS -  Tailwind CSS Admin Dashboard Template"
+        title="SignUp"
+        description="This is SignUp Tables Dashboard page for ADAS -  Tailwind CSS Admin Dashboard Template"
       />
       <AuthLayout>
         <SignUpForm />

@@ -215,7 +215,7 @@ export default function SimulationDetailPage() {
                         type="monotone"
                         dataKey="speed"
                         stroke="#8884d8"
-                        name="Tốc độ (km/h)"
+                        name="Tốc độ tương đối(km/h)"
                       />
                       <Line
                         type="monotone"
@@ -237,7 +237,7 @@ export default function SimulationDetailPage() {
                   <thead className="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
                     <tr>
                       <th className="px-3 py-2 border">Thời gian</th>
-                      <th className="px-3 py-2 border">Tốc độ</th>
+                      <th className="px-3 py-2 border">Tốc độ tương đối</th>
                       <th className="px-3 py-2 border">Khoảng cách</th>
                       <th className="px-3 py-2 border">Làn đường</th>
                       <th className="px-3 py-2 border">Obstacle</th>

@@ -2,12 +2,20 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import type { Vehicle } from "../types";
-import { getUserVehicles, updateVehicle } from "../services/api";
+import {
+  getUserVehicles,
+  createVehicle,
+  updateVehicle,
+  deleteVehicle,
+} from "../services/api";
 import PageMeta from "../components/common/PageMeta";
 import PageBreadcrumb from "../components/common/PageBreadCrumb";
-
+import VehicleFormModal from "../components/vehicle/VehicleFormModal";
+import { useModal } from "../hooks/useModal";
+import { Pencil, Trash2 } from "lucide-react";
 
 export default function UserVehiclePage() {
+  const { isOpen, openModal, closeModal } = useModal();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -22,6 +30,9 @@ export default function UserVehiclePage() {
   const [engineType, setEngineType] = useState<"" | Vehicle["engineType"]>("");
 
   const [sort, setSort] = useState("-createdAt");
+
+  // modal + selected
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
   const fetchVehicles = async () => {
     try {
@@ -57,6 +68,60 @@ export default function UserVehiclePage() {
 
   const resetToFirstPage = () => setPage(1);
 
+  const onOpenCreate = () => {
+    setSelectedVehicle(null);
+    openModal();
+  };
+
+  const onOpenEdit = (v: Vehicle) => {
+    setSelectedVehicle(v);
+    openModal();
+  };
+
+  const handleSubmitVehicle = async (payload: Partial<Vehicle>) => {
+    try {
+      if (selectedVehicle) {
+        // Update xe
+        const res = await updateVehicle(selectedVehicle._id, payload);
+        if (res.data.success) {
+          toast.success("Cập nhật xe thành công");
+        } else {
+          toast.error(res.data.message || "Cập nhật thất bại");
+        }
+      } else {
+        // Thêm xe
+        const res = await createVehicle(payload as any);
+        if (res.data.success) {
+          toast.success("Thêm xe thành công");
+        } else {
+          toast.error(res.data.message || "Thêm thất bại");
+        }
+      }
+      closeModal();
+      fetchVehicles();
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Có lỗi xảy ra");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Bạn có chắc muốn xóa xe này?")) return;
+    try {
+      const res = await deleteVehicle(id);
+      if (res.data.success) {
+        toast.success("Đã xóa xe");
+        if (vehicles.length === 1 && page > 1) setPage((p) => p - 1);
+        else fetchVehicles();
+      } else {
+        toast.error(res.data.message || "Xóa thất bại");
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.response?.data?.message || "Có lỗi xảy ra");
+    }
+  };
+
   // toggle trạng thái active/inactive
   const handleQuickToggleStatus = async (v: Vehicle) => {
     try {
@@ -83,13 +148,23 @@ export default function UserVehiclePage() {
       <PageBreadcrumb pageTitle="Xe của tôi" />
 
       <div className="p-6 border border-gray-200 rounded-2xl dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Xe của tôi
-          </h2>
-          <p className="text-gray-600 dark:text-gray-400">
-            Danh sách xe mà bạn đã đăng ký trong hệ thống
-          </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Xe của tôi
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400">
+              Danh sách xe mà bạn đã đăng ký trong hệ thống
+            </p>
+          </div>
+          <div>
+            <button
+              onClick={onOpenCreate}
+              className="px-4 py-2 rounded bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+            >
+              Thêm xe
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -163,12 +238,13 @@ export default function UserVehiclePage() {
                 <th className="px-4 py-2 text-left">Dung tích</th>
                 <th className="px-4 py-2 text-left">Trạng thái</th>
                 <th className="px-4 py-2 text-left">Tạo lúc</th>
+                <th className="px-4 py-2 text-right">Thao tác</th>
               </tr>
             </thead>
             <tbody className="text-gray-700 dark:text-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center">
+                  <td colSpan={9} className="px-4 py-8 text-center">
                     Đang tải…
                   </td>
                 </tr>
@@ -201,12 +277,28 @@ export default function UserVehiclePage() {
                     <td className="px-4 py-2">
                       {new Date(v.createdAt).toLocaleDateString()}
                     </td>
+                    <td className="px-4 py-2 text-right space-x-2">
+                      <button
+                        onClick={() => onOpenEdit(v)}
+                        title="Edit"
+                        className="p-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(v._id)}
+                        title="Delete"
+                        className="p-2 rounded bg-red-600 text-white hover:bg-red-700"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="px-4 py-6 text-center text-gray-500 dark:text-gray-400"
                   >
                     Không có dữ liệu
@@ -220,8 +312,8 @@ export default function UserVehiclePage() {
         {/* Pagination */}
         <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mt-4">
           <div className="text-sm text-gray-700 dark:text-gray-300">
-            Trang <span className="font-medium">{page}</span> / {totalPages} — Tổng{" "}
-            <span className="font-medium">{total}</span>
+            Trang <span className="font-medium">{page}</span> / {totalPages} —
+            Mỗi trang
             <select
               value={limit}
               onChange={(e) => {
@@ -254,6 +346,17 @@ export default function UserVehiclePage() {
           </div>
         </div>
       </div>
+
+      {/* Modal form thêm/sửa xe */}
+      <VehicleFormModal
+        isOpen={isOpen}
+        onClose={() => {
+          closeModal();
+          setSelectedVehicle(null);
+        }}
+        initialData={selectedVehicle}
+        onSubmit={handleSubmitVehicle}
+      />
     </>
   );
 }

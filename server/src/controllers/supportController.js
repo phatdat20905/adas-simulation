@@ -1,4 +1,3 @@
-// controllers/supportController.js
 import * as supportService from "../services/supportService.js";
 
 export const createSupport = async (req, res) => {

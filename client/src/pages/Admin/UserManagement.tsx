@@ -5,7 +5,7 @@ import Input from "../../components/form/input/InputField";
 import Label from "../../components/form/Label";
 import toast from "react-hot-toast";
 import type { User } from "../../types";
-import { getUsersAdmin, updateUserById, deleteUserById } from "../../services/api";
+import { getUsersAdmin, updateUser, deleteUser } from "../../services/api";
 import PageMeta from "../../components/common/PageMeta";
 import PageBreadcrumb from "../../components/common/PageBreadCrumb";
 
@@ -79,7 +79,7 @@ export default function AdminUserManagement() {
   const handleSave = async () => {
     try {
       if (!selectedUser) return;
-      const res = await updateUserById(selectedUser._id, formData);
+      const res = await updateUser(selectedUser._id, formData);
       if (res.data.success) {
         toast.success("Cập nhật người dùng thành công");
         closeModal();
@@ -96,7 +96,7 @@ export default function AdminUserManagement() {
   const handleDelete = async (id: string) => {
     if (!confirm("Bạn có chắc muốn vô hiệu hoá tài khoản này?")) return;
     try {
-      const res = await deleteUserById(id);
+      const res = await deleteUser(id);
       if (res.data.success) {
         toast.success("Đã vô hiệu hoá tài khoản");
         fetchUsers();
@@ -111,7 +111,7 @@ export default function AdminUserManagement() {
 
   const handleQuickToggleActive = async (user: User) => {
     try {
-      const res = await updateUserById(user._id, { active: !user.active });
+      const res = await updateUser(user._id, { active: !user.active });
       if (res.data.success) {
         toast.success(`Đã ${!user.active ? "kích hoạt" : "vô hiệu hoá"} người dùng`);
         fetchUsers();
@@ -131,12 +131,12 @@ export default function AdminUserManagement() {
   // UI
   return (
     <>
-      <PageMeta title="User Management | ADAS" description="Quản lý người dùng trong hệ thống" />
-      <PageBreadcrumb pageTitle="User Management" />
+      <PageMeta title="User Managemnet | ADAS" description="Quản lý người dùng trong hệ thống" />
+      <PageBreadcrumb pageTitle="Quản Lý Người Dùng" />
       <div className="p-6 border border-gray-200 rounded-2xl dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm text-gray-900 dark:text-gray-100">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-xl font-semibold">User Management</h2>
+            <h2 className="text-xl font-semibold">Quản Lý Người Dùng</h2>
             <p className="text-gray-500 dark:text-gray-400">Quản lý tài khoản người dùng</p>
           </div>
           <div className="text-sm text-gray-600 dark:text-gray-400">
