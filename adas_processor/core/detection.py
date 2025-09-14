@@ -1,7 +1,10 @@
+# core/detection.py
 from ultralytics import YOLO
 import cv2
-from config.config import COCO_NAMES, VEHICLES, DIST_WARN_M, SAVE_FRAMES, FRAMES_DIR
+import numpy as np
+from config.config import COCO_NAMES, VEHICLES, DIST_WARN_M, SAVE_FRAMES, FRAMES_DIR, LANE_DEPARTURE_THRESHOLD
 from .estimation import est_distance_m
+from .lane_detection import LaneDepartureWarning
 from pathlib import Path
 
 FRAMES_DIR = Path(FRAMES_DIR)
@@ -12,6 +15,8 @@ class Detector:
         self.model_coco = YOLO(str(coco_model_path))
         self.model_sign = YOLO(str(sign_model_path))
         self.device = device
+        self.lane_detector = LaneDepartureWarning(warning_threshold=LANE_DEPARTURE_THRESHOLD)
+    
 
     def detect_objects(self, frame, W, f_pix, tracker, frame_idx=None, simulation_id=None):
         results = self.model_coco.track(
@@ -23,7 +28,33 @@ class Detector:
         data, alerts = [], []
         res = results[0]
 
+        # Detect lane departure
+        lane_warning, lane_deviation, _ = self.lane_detector.process_frame(frame, draw=False)
+        
+        # Thêm cảnh báo lane departure nếu cần
+        if lane_warning:
+            alerts.append({
+                "type": "lane_departure",
+                "description": f"Lane departure detected (deviation: {lane_deviation:.3f})",
+                "severity": "high"
+            })
+
         if getattr(res, "boxes", None) is None:
+            # Vẫn trả về lane information ngay cả khi không có objects
+            if lane_deviation is not None:
+                data.append({
+                    "cls": -1,
+                    "name": "lane",
+                    "dist": None,
+                    "speed": None,
+                    "ttc": None,
+                    "obstacle_detected": False,
+                    "lane_status": "departing" if abs(lane_deviation) > LANE_DEPARTURE_THRESHOLD else "within",
+                    "lane_deviation": lane_deviation,
+                    "bbox": None,
+                    "track_id": -1,
+                    "warn": lane_warning
+                })
             return frame, data, alerts
 
         for b in res.boxes:
@@ -50,13 +81,22 @@ class Detector:
             name = COCO_NAMES[cls]
             dist, speed_kmh, v_rel, ttc, warn = None, None, None, None, False
             obstacle_detected = False
+            
+            # Xác định trạng thái làn đường dựa trên deviation
             lane_status = "within"
+            if lane_deviation is not None:
+                if abs(lane_deviation) > LANE_DEPARTURE_THRESHOLD:
+                    lane_status = "departing"
+                elif abs(lane_deviation) > LANE_DEPARTURE_THRESHOLD * 0.7:
+                    lane_status = "warning"
+                else:
+                    lane_status = "within"
 
             if cls in VEHICLES and track_id != -1:
                 dist = est_distance_m((x1, y1, x2, y2), f_pix, cls)
                 speed_kmh, v_rel = tracker.estimate_speed(track_id, dist)
 
-                if v_rel is not None and v_rel > 0.1:  # approaching
+                if v_rel is not None and v_rel > 0.1:
                     ttc = dist / v_rel
 
                 if dist is not None and dist < DIST_WARN_M:
@@ -97,9 +137,26 @@ class Detector:
                 "ttc": ttc,
                 "obstacle_detected": obstacle_detected,
                 "lane_status": lane_status,
+                "lane_deviation": lane_deviation,
                 "bbox": [x1, y1, x2, y2],
                 "track_id": track_id,
                 "warn": bool(warn)
+            })
+
+        # Thêm lane information nếu không có objects
+        if not data and lane_deviation is not None:
+            data.append({
+                "cls": -1,
+                "name": "lane",
+                "dist": None,
+                "speed": None,
+                "ttc": None,
+                "obstacle_detected": False,
+                "lane_status": "departing" if abs(lane_deviation) > LANE_DEPARTURE_THRESHOLD else "within",
+                "lane_deviation": lane_deviation,
+                "bbox": None,
+                "track_id": -1,
+                "warn": lane_warning
             })
 
         return frame, data, alerts

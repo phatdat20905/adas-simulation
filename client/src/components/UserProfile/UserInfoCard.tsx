@@ -3,7 +3,7 @@ import { useModal } from "../../hooks/useModal";
 import { Modal } from "../ui/modal";
 import Input from "../form/input/InputField";
 import Label from "../form/Label";
-import { getCurrentUser, updateUser } from "../../services/api";
+import { getCurrentUser, updateUser as updateUserApi } from "../../services/api";
 import type { User } from "../../types";
 import { useAuth } from "../../context/AuthContext";
 import toast from "react-hot-toast";
@@ -28,7 +28,7 @@ export default function UserInfoCard() {
       }
     }
     fetchUser();
-  }, [updateUserContext]);
+  }, [updateUserContext]); // ✅ giờ an toàn vì đã useCallback trong context
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -37,7 +37,7 @@ export default function UserInfoCard() {
   const handleSave = async () => {
     if (!user) return;
     try {
-      const res = await updateUser(user._id, formData);
+      const res = await updateUserApi(user._id, formData);
       if (res.data.success) {
         updateUserContext(res.data.data ?? {});
         toast.success("Cập nhật thông tin thành công!");
@@ -65,7 +65,7 @@ export default function UserInfoCard() {
         const base64String = reader.result as string;
         setPreviewImage(base64String);
 
-        const res = await updateUser(user._id, { image: base64String });
+        const res = await updateUserApi(user._id, { image: base64String });
         if (res.data.success) {
           updateUserContext(res.data.data ?? {});
           toast.success("Ảnh đại diện đã được cập nhật!");
@@ -121,22 +121,10 @@ export default function UserInfoCard() {
 
       {/* Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-        <div>
-          <p className="text-xs text-gray-500">Full Name</p>
-          <p className="font-medium text-gray-800 dark:text-gray-200">{user?.fullName || "N/A"}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Email</p>
-          <p className="font-medium text-gray-800 dark:text-gray-200">{user?.email || "N/A"}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Phone</p>
-          <p className="font-medium text-gray-800 dark:text-gray-200">{user?.phone || "N/A"}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Address</p>
-          <p className="font-medium text-gray-800 dark:text-gray-200">{user?.address || "N/A"}</p>
-        </div>
+        <InfoRow label="Full Name" value={user?.fullName} />
+        <InfoRow label="Email" value={user?.email} />
+        <InfoRow label="Phone" value={user?.phone} />
+        <InfoRow label="Address" value={user?.address} />
       </div>
 
       {/* Edit Profile button */}
@@ -150,27 +138,15 @@ export default function UserInfoCard() {
         </button>
       </div>
 
-      {/* Modal chỉnh sửa */}
+      {/* Modal */}
       <Modal isOpen={isOpen} onClose={closeModal} className="max-w-xl m-4">
         <div className="bg-white dark:bg-gray-900 rounded-2xl p-6">
           <h4 className="mb-4 text-xl font-semibold">Edit Personal Information</h4>
           <form className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="col-span-2 space-y-2">
-              <Label>Full Name</Label>
-              <Input name="fullName" type="text" value={formData.fullName || ""} onChange={handleChange} />
-            </div>
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input name="email" type="email" value={formData.email || ""} onChange={handleChange} />
-            </div>
-            <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input name="phone" type="text" value={formData.phone || ""} onChange={handleChange} />
-            </div>
-            <div className="col-span-2 space-y-2">
-              <Label>Address</Label>
-              <Input name="address" type="text" value={formData.address || ""} onChange={handleChange} />
-            </div>
+            <FormField label="Full Name" name="fullName" value={formData.fullName} onChange={handleChange} full />
+            <FormField label="Email" name="email" value={formData.email} onChange={handleChange} />
+            <FormField label="Phone" name="phone" value={formData.phone} onChange={handleChange} />
+            <FormField label="Address" name="address" value={formData.address} onChange={handleChange} full />
           </form>
           <div className="flex justify-end mt-6 gap-3">
             <button onClick={closeModal} className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200">
@@ -182,6 +158,36 @@ export default function UserInfoCard() {
           </div>
         </div>
       </Modal>
+    </div>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div>
+      <p className="text-xs text-gray-500">{label}</p>
+      <p className="font-medium text-gray-800 dark:text-gray-200">{value || "N/A"}</p>
+    </div>
+  );
+}
+
+function FormField({
+  label,
+  name,
+  value,
+  onChange,
+  full
+}: {
+  label: string;
+  name: string;
+  value?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  full?: boolean;
+}) {
+  return (
+    <div className={`${full ? "col-span-2" : ""} space-y-2`}>
+      <Label>{label}</Label>
+      <Input name={name} type="text" value={value || ""} onChange={onChange} />
     </div>
   );
 }

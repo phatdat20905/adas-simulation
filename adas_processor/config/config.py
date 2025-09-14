@@ -13,16 +13,20 @@ FRAMES_DIR = BASE_DIR.parent / "server" / "Processed" / "frames"
 VIDEOS_DIR = BASE_DIR.parent / "server" / "Processed" / "videos"
 
 # ADAS parameters
-FRAME_INTERVAL = 0.5       # log sensorData mỗi 0.5s
-ALERT_COOLDOWN_S = 5.0     # cooldown 5s cho cùng loại alert
-DISTANCE_THRESHOLD_COLLISION = 5.0      # m
-DISTANCE_THRESHOLD_OBSTACLE = 10.0      # m
-LANE_DEPARTURE_THRESHOLD = 0.5          # lane offset threshold
+FRAME_INTERVAL = 0.5
+ALERT_COOLDOWN_S = 5.0
+DISTANCE_THRESHOLD_COLLISION = 5.0
+DISTANCE_THRESHOLD_OBSTACLE = 10.0
+LANE_DEPARTURE_THRESHOLD = 0.2  # Giảm ngưỡng cho nhạy hơn
 TRAFFIC_SIGN_CONFIDENCE_THRESHOLD = 0.7
 OPTICAL_FLOW_SPEED_SCALE = 10.0
 
+# Lane detection parameters
+LANE_DETECTION_ENABLED = True
+LANE_WARNING_COOLDOWN = 2.0  # Cooldown cho cảnh báo làn đường
+
 # Runtime options
-SHOW_PREVIEW = False   # default off for headless server
+SHOW_PREVIEW = True   # default off for headless server
 SAVE_FRAMES = False    # disable saving frames unless needed
 H_FOV_DEG = 78.0
 DIST_WARN_M = 8.0

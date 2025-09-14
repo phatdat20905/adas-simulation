@@ -13,9 +13,10 @@ class SensorData(BaseModel):
     simulationId: str
     userId: str
     timestamp: str
-    speed: Optional[float]            # allow None / negative
+    speed: Optional[float]
     distance_to_object: Optional[float]
     lane_status: Optional[str]
+    lane_deviation: Optional[float]  # Thêm lane deviation
     obstacle_detected: bool
     camera_frame_url: Optional[str]
     ttc: Optional[float] = None

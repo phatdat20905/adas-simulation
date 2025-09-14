@@ -1,6 +1,11 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import Vehicle from '../models/Vehicle.js';
+import Simulation from '../models/Simulation.js';
+import Alert from '../models/Alert.js';
+import SensorData from '../models/SensorData.js';
+import { deleteFileSafe } from './simulationService.js'; 
 
 const registerUser = async ({ fullName, email, phone, password, role, address, image, active }) => {
   const existingUser = await User.findOne({ $or: [{ fullName }, { email }, { phone }] });
@@ -122,26 +127,59 @@ const updateUser = async (userId, updates) => {
   return user;
 };
 
-/**
- * Delete user by ID (soft delete mặc định, hard delete nếu cần)
- */
-const deleteUser = async (userId, hard = false) => {
-  if (hard) {
-    const user = await User.findByIdAndDelete(userId);
-    if (!user) throw new Error("User not found");
-    return { message: "User permanently deleted" };
+const deleteUser = async (userId) => {
+  // 1️⃣ Tìm user
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new Error('User not found');
   }
 
-  const user = await User.findByIdAndUpdate(
-    userId,
-    { $set: { active: false, refreshToken: null, updatedAt: Date.now() } },
-    { new: true }
-  ).select("-password -refreshToken");
+  // 2️⃣ Lấy tất cả vehicle của user
+  const vehicles = await Vehicle.find({ owner: user._id });
 
-  if (!user) throw new Error("User not found");
+  // 3️⃣ Lấy toàn bộ simulation liên quan (theo userId và các vehicle)
+  const simulations = await Simulation.find({
+    $or: [
+      { userId: user._id },
+      { vehicleId: { $in: vehicles.map(v => v._id) } }
+    ]
+  });
 
-  return { message: "User account deactivated" };
+  // 4️⃣ Xóa dữ liệu liên quan
+  await Promise.all([
+    SensorData.deleteMany({
+      $or: [
+        { userId: user._id },
+        { vehicleId: { $in: vehicles.map(v => v._id) } }
+      ]
+    }),
+    Alert.deleteMany({
+      $or: [
+        { userId: user._id },
+        { vehicleId: { $in: vehicles.map(v => v._id) } }
+      ]
+    }),
+    Simulation.deleteMany({
+      $or: [
+        { userId: user._id },
+        { vehicleId: { $in: vehicles.map(v => v._id) } }
+      ]
+    }),
+    Vehicle.deleteMany({ owner: user._id }),
+  ]);
+
+  // 5️⃣ Xóa file của từng simulation (nếu có)
+  for (const sim of simulations) {
+    if (sim.filepath) await deleteFileSafe(sim.filepath);
+    if (sim.videoUrl) await deleteFileSafe(sim.videoUrl);
+  }
+
+  // 6️⃣ Cuối cùng xóa user
+  await User.findByIdAndDelete(user._id);
+
+  return { message: 'User and all related data/files deleted' };
 };
+
 
 const logoutUser = async (userId) => {
   const user = await User.findByIdAndUpdate(

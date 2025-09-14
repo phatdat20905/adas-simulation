@@ -90,12 +90,17 @@ const updateUser = async (req, res) => {
 
 const deleteUser = async (req, res) => {
   try {
-    const { hard } = req.query; // ?hard=true nếu muốn xóa hẳn
-    const result = await userService.deleteUser(req.params.id, hard === "true");
+    const result = await userService.deleteUser(req.params.id);
 
-    return res.status(200).json({ success: true, ...result });
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
   } catch (error) {
-    return res.status(404).json({ success: false, message: error.message });
+    return res.status(404).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 

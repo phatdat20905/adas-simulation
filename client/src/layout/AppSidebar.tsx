@@ -9,7 +9,6 @@ import {
   Camera,
   MoreHorizontal,
   Users,
-  Settings,
   BellRing
 } from "lucide-react";
 import { useSidebar } from "../context/SidebarContext";

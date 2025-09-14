@@ -1,11 +1,11 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import type { User } from "../types";
-import * as api from "../services/api"; // 👉 import api
+import * as api from "../services/api";
 
 interface AuthContextType {
   user: User | null;
   login: (user: User, tokens?: { accessToken?: string; refreshToken?: string }) => void;
-  logout: () => Promise<void>; // 👉 trả về Promise
+  logout: () => Promise<void>;
   updateUser: (updatedUser: Partial<User>) => void;
 }
 
@@ -31,25 +31,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      // 👉 Gọi API logout để server xóa refresh token hoặc session
       await api.logout();
     } catch (error) {
       console.error("Logout API error:", error);
-      // vẫn tiếp tục xóa local storage để đảm bảo client thoát
     } finally {
       localStorage.clear();
       setUser(null);
     }
   };
 
-  const updateUser = (updatedUser: Partial<User>) => {
+  // ✅ dùng useCallback để giữ reference ổn định
+  const updateUser = useCallback((updatedUser: Partial<User>) => {
     setUser((prev) => {
       if (!prev) return null;
       const newUser = { ...prev, ...updatedUser };
       localStorage.setItem("user", JSON.stringify(newUser));
       return newUser;
     });
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, login, logout, updateUser }}>
