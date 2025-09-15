@@ -82,6 +82,15 @@ cd adas_processor
 pip install -r requirements.txt
 ```
 
+#### 🔗 Tải model YOLO
+Vì file model quá lớn (>100 MB) không thể đẩy trực tiếp lên GitHub, bạn cần **tải model YOLO đã huấn luyện** từ Google Drive:  
+👉 [Tải model tại đây](https://drive.google.com/your-model-link)  
+
+Sau khi tải xong, hãy đặt file **`y8best.pt`** vào thư mục:  
+```
+adas_processor/models/y8best.pt
+```
+
 Chạy service:  
 ```bash
 uvicorn service.adas_service:app --host 0.0.0.0 --port 5001 --reload

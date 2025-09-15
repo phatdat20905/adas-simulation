@@ -45,3 +45,4 @@ Thumbs.db
 # Output từ AI/mô phỏng
 output/
 results/
+adas_processor/models/y8best.pt

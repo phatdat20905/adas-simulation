@@ -13,5 +13,11 @@ def est_distance_m(box, f_pix, cls=None):
     """
     x1, y1, x2, y2 = box
     w_pix = max(1, (x2 - x1))
-    Wm = W_REAL_M.get(cls, 1.8) if cls is not None else 1.8
+    
+    # Sử dụng width thực tế dựa trên class
+    if cls == 999:  # ổ gà
+        Wm = 0.8  # Giả định chiều rộng trung bình của ổ gà
+    else:
+        Wm = W_REAL_M.get(cls, 1.8) if cls is not None else 1.8
+        
     return (Wm * f_pix) / w_pix
