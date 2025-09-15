@@ -84,7 +84,7 @@ pip install -r requirements.txt
 
 #### 🔗 Tải model YOLO
 Vì file model quá lớn (>100 MB) không thể đẩy trực tiếp lên GitHub, bạn cần **tải model YOLO đã huấn luyện** từ Google Drive:  
-👉 [Tải model tại đây](https://drive.google.com/your-model-link)  
+👉 [Tải model tại đây](https://drive.google.com/file/d/1eZ1PvV-tJeKXw4GZk6F1vVUIAFMo2oFb/view?usp=sharing)  
 
 Sau khi tải xong, hãy đặt file **`y8best.pt`** vào thư mục:  
 ```
